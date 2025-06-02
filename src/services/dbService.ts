@@ -38,7 +38,9 @@ export function makeDbService(
         TableName: tableName,
         Item: item,
       });
-      client.send(command);
+      const resp = await client.send(command);
+
+      console.log("PutItem response:", resp);
     },
 
     async queryItems(
