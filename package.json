@@ -28,6 +28,7 @@
     "aws-lambda": "^1.0.7",
     "cdk": "^2.1017.1",
     "constructs": "^10.0.0",
+    "esbuild": "~0.21",
     "init": "^0.1.2",
     "source-map-support": "^0.5.21",
     "zod": "^3.25.48"

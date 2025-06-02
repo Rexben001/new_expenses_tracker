@@ -20,10 +20,16 @@ export class ExpensesBeStack extends cdk.Stack {
       runtime: cdk.aws_lambda.Runtime.NODEJS_18_X, // Use Node.js 18 runtime
       entry: path.join(
         __dirname,
-        "../src/handlers/createExpenses/index.handler"
+        "../src/handlers/createExpenses/index.ts" // Path to your Lambda function entry file
       ), // Path to your Lambda function code
+      handler: "handler", // The exported handler function in your Lambda code
       environment: {
         TABLE_NAME: table.tableName, // Pass the table name as an environment variable
+      },
+      bundling: {
+        esbuildArgs: {
+          "--packages": "bundle", // Add this argument to fix the issue
+        },
       },
     });
 
