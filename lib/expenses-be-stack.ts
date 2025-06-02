@@ -6,7 +6,13 @@ import path = require("path");
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+    super(scope, id, {
+      ...props,
+      env: {
+        account: "655187298276", // Use AWS account from environment
+        region: "eu-west-1", // Use AWS region from environment
+      },
+    });
 
     // Create a DynamoDB table
     const table = new dynamodb.Table(this, "ExpensesTable", {
