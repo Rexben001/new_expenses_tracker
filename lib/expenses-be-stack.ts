@@ -32,11 +32,6 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: {
         TABLE_NAME: table.tableName, // Pass the table name as an environment variable
       },
-      bundling: {
-        esbuildArgs: {
-          "--packages": "bundle", // Add this argument to fix the issue
-        },
-      },
     });
 
     // Grant the Lambda function permissions to read and write to the DynamoDB table
