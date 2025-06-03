@@ -2,7 +2,8 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import path = require("path");
+import * as path from "path";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -22,7 +23,7 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Create a NodejsFunction
-    const lambdaFunction = new NodejsFunction(this, "ExpensesFunction", {
+    const getExpensesLambda = new NodejsFunction(this, "ExpensesFunction", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
       entry: path.join(
         __dirname,
@@ -35,6 +36,23 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Grant the Lambda function permissions to read and write to the DynamoDB table
-    table.grantReadWriteData(lambdaFunction);
+    table.grantReadWriteData(getExpensesLambda);
+
+    const api = new apigateway.RestApi(this, "ExpensesApi", {
+      restApiName: "Expenses Service",
+      description: "This service serves expenses.",
+    });
+
+    // Integrate Lambda with API Gateway
+    const getExpensesIntegration = new apigateway.LambdaIntegration(
+      getExpensesLambda,
+      {
+        requestTemplates: { "application/json": '{"statusCode": 200}' },
+      }
+    );
+
+    // /expenses route
+    const expenses = api.root.addResource("expenses");
+    expenses.addMethod("GET", getExpensesIntegration); // GET /expenses
   }
 }
