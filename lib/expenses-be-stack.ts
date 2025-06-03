@@ -23,7 +23,7 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Create a NodejsFunction
-    const getExpensesLambda = new NodejsFunction(this, "ExpensesFunction", {
+    const createExpensesLambda = new NodejsFunction(this, "ExpensesFunction", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
       entry: path.join(
         __dirname,
@@ -36,7 +36,7 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Grant the Lambda function permissions to read and write to the DynamoDB table
-    table.grantReadWriteData(getExpensesLambda);
+    table.grantReadWriteData(createExpensesLambda);
 
     const api = new apigateway.RestApi(this, "ExpensesApi", {
       restApiName: "Expenses Service",
@@ -44,8 +44,8 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Integrate Lambda with API Gateway
-    const getExpensesIntegration = new apigateway.LambdaIntegration(
-      getExpensesLambda,
+    const createExpensesIntegration = new apigateway.LambdaIntegration(
+      createExpensesLambda,
       {
         requestTemplates: { "application/json": '{"statusCode": 200}' },
       }
@@ -53,7 +53,7 @@ export class ExpensesBeStack extends cdk.Stack {
 
     // /expenses route
     const expenses = api.root.addResource("expenses");
-    expenses.addMethod("GET", getExpensesIntegration); // GET /expenses
+    expenses.addMethod("POST", createExpensesIntegration); // POST /expenses
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
