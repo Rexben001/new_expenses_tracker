@@ -54,5 +54,10 @@ export class ExpensesBeStack extends cdk.Stack {
     // /expenses route
     const expenses = api.root.addResource("expenses");
     expenses.addMethod("GET", getExpensesIntegration); // GET /expenses
+
+    new cdk.CfnOutput(this, "API Gateway URL", {
+      value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
+      description: "The base URL of the API Gateway",
+    });
   }
 }
