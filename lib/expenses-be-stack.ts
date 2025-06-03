@@ -72,8 +72,7 @@ export class ExpensesBeStack extends cdk.Stack {
     expenses.addMethod("POST", createExpensesIntegration); // POST /expenses
 
     expenses.addMethod("GET", getExpensesIntegration); // GET /expenses
-    const expense = expenses.addResource("expenses");
-    const userId = expense.addResource("{userId}");
+    const userId = expenses.addResource("{userId}");
     const expenseId = userId.addResource("{expenseId}");
 
     expenseId.addMethod("GET", getExpensesIntegration); // GET /expenses/{id}

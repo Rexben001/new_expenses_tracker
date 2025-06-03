@@ -19,7 +19,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
 
       return await getItem(expenseId!, dbService);
     } catch (error) {
-      console.error("Error creating expense:", error);
+      console.error("Error retrieving expense:", error);
       return {
         statusCode: 500,
         body: JSON.stringify({ message: "Internal server error" }),

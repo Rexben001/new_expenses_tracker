@@ -4,7 +4,7 @@ export const ExpenseSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1, "Name is required"),
   amount: z.number().positive("Amount must be a positive number"),
-  date: z.string().refine((date) => !isNaN(Date.parse(date)), {
+  updatedAt: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Date must be a valid date string",
   }),
   categoryId: z.string().uuid().optional(),
