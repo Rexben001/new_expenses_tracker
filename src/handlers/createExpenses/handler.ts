@@ -13,13 +13,11 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent) => {
     try {
       const body = parseEventBody(event.body ?? "");
-      const { amount, description } = body;
 
       const item = {
         id: randomUUID(),
-        amount,
-        description,
         createdAt: new Date().toISOString(),
+        ...body,
       };
 
       await dbService.putItem(item);

@@ -6,7 +6,7 @@ export interface DbService {
   getItem(key: Record<string, any>): Promise<Record<string, any>>;
   putItem(item: Record<string, any>): Promise<void>;
   queryItems(
-    indexName: string,
+    // indexName: string,
     keyConditionExpression: string,
     expressionAttributeValues: Record<string, any>
   ): Promise<Record<string, any>[]>;
@@ -44,13 +44,13 @@ export function makeDbService(
     },
 
     async queryItems(
-      indexName: string,
+      // indexName: string,
       keyConditionExpression: string,
       expressionAttributeValues: Record<string, any>
     ) {
       const command = new QueryCommand({
         TableName: tableName,
-        IndexName: indexName,
+        // IndexName: indexName,
         KeyConditionExpression: keyConditionExpression,
         ExpressionAttributeValues: expressionAttributeValues,
       });
@@ -58,7 +58,7 @@ export function makeDbService(
 
       if (!response.Items || response.Items.length === 0) {
         throw new Error(
-          `No items found for index ${indexName} with condition ${keyConditionExpression}`
+          `No items found with condition ${keyConditionExpression}`
         );
       }
       return response.Items;

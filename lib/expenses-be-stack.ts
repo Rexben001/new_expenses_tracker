@@ -23,15 +23,12 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Create a NodejsFunction
-    const createExpensesLambda = new NodejsFunction(this, "ExpensesFunction", {
+    const createExpensesLambda = new NodejsFunction(this, "CreateExpensesFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
-      entry: path.join(
-        __dirname,
-        "../src/handlers/createExpenses/index.ts" // Path to your Lambda function entry file
-      ), // Path to your Lambda function code
-      handler: "handler", // The exported handler function in your Lambda code
+      entry: path.join(__dirname, "../src/handlers/createExpenses/index.ts"),
+      handler: "handler",
       environment: {
-        TABLE_NAME: table.tableName, // Pass the table name as an environment variable
+        TABLE_NAME: table.tableName,
       },
     });
 
@@ -75,9 +72,11 @@ export class ExpensesBeStack extends cdk.Stack {
     expenses.addMethod("POST", createExpensesIntegration); // POST /expenses
 
     expenses.addMethod("GET", getExpensesIntegration); // GET /expenses
-    // /expenses/{id} route
-    const expense = expenses.addResource("expenses/{id}");
-    expense.addMethod("GET", getExpensesIntegration); // GET /expenses/{id}
+    const expense = expenses.addResource("expenses");
+    const userId = expense.addResource("{userId}");
+    const expenseId = userId.addResource("{expenseId}");
+
+    expenseId.addMethod("GET", getExpensesIntegration); // GET /expenses/{id}
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
