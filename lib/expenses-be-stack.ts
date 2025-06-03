@@ -23,7 +23,7 @@ export class ExpensesBeStack extends cdk.Stack {
 
     // Create a NodejsFunction
     const lambdaFunction = new NodejsFunction(this, "ExpensesFunction", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_18_X, // Use Node.js 18 runtime
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
       entry: path.join(
         __dirname,
         "../src/handlers/createExpenses/index.ts" // Path to your Lambda function entry file
