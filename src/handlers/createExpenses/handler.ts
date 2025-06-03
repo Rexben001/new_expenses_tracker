@@ -1,23 +1,22 @@
 import type { APIGatewayEvent } from "aws-lambda";
 import { DbService } from "../../services/dbService";
-import { Expense, ExpenseSchema } from "../../domain/models/expense";
+import {
+  Expense,
+  ExpenseRequest,
+  ExpenseRequestSchema,
+  ExpenseSchema,
+} from "../../domain/models/expense";
 import { HttpError } from "../../utils/http-error";
+import { randomUUID } from "crypto";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent) => {
     try {
       const body = parseEventBody(event.body ?? "");
-      const { id, amount, description } = body;
-
-      if (!id || !amount || !description) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ message: "Missing required fields" }),
-        };
-      }
+      const { amount, description } = body;
 
       const item = {
-        id,
+        id: randomUUID(),
         amount,
         description,
         createdAt: new Date().toISOString(),
@@ -39,10 +38,10 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   };
 };
 
-const parseEventBody = (body: string): Expense => {
+const parseEventBody = (body: string): ExpenseRequest => {
   try {
     const json = JSON.parse(body) as Record<string, unknown>;
-    return ExpenseSchema.parse({ ...json });
+    return ExpenseRequestSchema.parse({ ...json });
   } catch (error) {
     throw new HttpError("Invalid request body", 400, {
       cause: error as Error,
