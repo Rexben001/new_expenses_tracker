@@ -16,7 +16,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
 
       const item = {
         id: randomUUID(),
-        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         ...body,
       };
 
