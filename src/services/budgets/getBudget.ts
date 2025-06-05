@@ -13,38 +13,45 @@ export const getBudget = async ({
     ? "PK = :pk AND SK = :sk"
     : "PK = :pk AND begins_with(SK, :skPrefix)";
 
-  const expressionAttributeValues = {
-    ":pk": { S: `USER#${userId}` },
-    ":sk": { S: budgetId ? `BUDGET#${budgetId}` : "" },
-    ":skPrefix": { S: "BUDGET#" },
-  };
+  const expressionAttributeValues = getExpressionAttributeValues(
+    userId,
+    budgetId
+  );
 
-  try {
-    const items = await dbService.queryItems(
-      keyConditionExpression,
-      expressionAttributeValues
-    );
+  const items = await dbService.queryItems(
+    keyConditionExpression,
+    expressionAttributeValues
+  );
 
-    if (items.length === 0) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ message: "Budget not found" }),
-      };
-    }
-
-    const budget = items;
-
+  if (items.length === 0) {
     return {
-      statusCode: 200,
-      body: JSON.stringify({
-        budget,
-      }),
-    };
-  } catch (error) {
-    console.error("Error fetching budget:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: "Internal server error" }),
+      statusCode: 404,
+      body: JSON.stringify({ message: "Budget not found" }),
     };
   }
+
+  const budget = items;
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      budget,
+    }),
+  };
+};
+
+const getExpressionAttributeValues = (
+  userId: string,
+  budgetId?: string
+): Record<string, any> => {
+  if (budgetId)
+    return {
+      ":pk": { S: `USER#${userId}` },
+      ":sk": { S: `BUDGET#${budgetId}` },
+    };
+
+  return {
+    ":pk": { S: `USER#${userId}` },
+    ":skPrefix": { S: "BUDGET#" },
+  };
 };

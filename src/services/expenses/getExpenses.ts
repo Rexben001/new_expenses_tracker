@@ -11,48 +11,77 @@ export const getExpenses = async ({
   expenseId?: string;
   budgetId?: string;
 }) => {
-  const keyConditionExpression = expenseId
-    ? "PK = :pk AND SK = :sk"
-    : "PK = :pk AND begins_with(SK, :skPrefix)";
+  const keyConditionExpression = getKeyConditionExpression(budgetId, expenseId);
 
-  const expressionAttributeValues = {
-    ":pk": { S: getPK(userId, budgetId) },
-    ":sk": { S: getSK(expenseId) },
-    ":skPrefix": { S: "EXPENSE#" },
+  const expressionAttributeValues = getExpressionAttributeValues(
+    userId,
+    budgetId,
+    expenseId
+  );
+
+  const items = await dbService.queryItems(
+    keyConditionExpression,
+    expressionAttributeValues
+  );
+
+  // Map items to the expected format
+  const expenses = items.map((item) => ({
+    id: item.id,
+    amount: item.amount,
+    description: item.description,
+    date: item.date,
+    category: item.category,
+    updatedAt: item.updatedAt,
+  }));
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ expenses }),
   };
-  try {
-    const items = await dbService.queryItems(
-      keyConditionExpression,
-      expressionAttributeValues
-    );
+};
 
-    // Map items to the expected format
-    const expenses = items.map((item) => ({
-      id: item.id,
-      amount: item.amount,
-      description: item.description,
-      date: item.date,
-      category: item.category,
-      updatedAt: item.updatedAt,
-    }));
-
+const getExpressionAttributeValues = (
+  userId: string,
+  budgetId?: string,
+  expenseId?: string
+): Record<string, any> => {
+  if (budgetId && expenseId)
     return {
-      statusCode: 200,
-      body: JSON.stringify({ expenses }),
+      ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
+      ":sk": { S: `EXPENSE#${expenseId}` },
     };
-  } catch (error) {
-    console.error("Error fetching expenses:", error);
+
+  if (budgetId) {
     return {
-      statusCode: 500,
-      body: JSON.stringify({ message: "Internal server error" }),
+      ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
+      ":skPrefix": { S: "EXPENSE#" },
     };
   }
+
+  if (expenseId) {
+    return {
+      ":pk": { S: `USER#${userId}` },
+      ":sk": { S: `EXPENSE#${expenseId}` },
+    };
+  }
+
+  return {
+    ":pk": { S: `USER#${userId}` },
+    ":skPrefix": { S: "EXPENSE#" },
+  };
 };
 
-const getPK = (userId: string, budgetId?: string): string => {
-  return budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
-};
+const getKeyConditionExpression = (
+  budgetId?: string,
+  expenseId?: string
+): string => {
+  if (expenseId) {
+    return "PK = :pk AND SK = :sk";
+  }
 
-const getSK = (expenseId?: string): string => {
-  return expenseId ? `EXPENSE#${expenseId}` : "";
+  if (budgetId) {
+    return "PK = :pk AND begins_with(SK, :skPrefix)";
+  }
+
+  return "PK = :pk AND begins_with(SK, :skPrefix)";
 };
