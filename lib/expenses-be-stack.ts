@@ -4,6 +4,7 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import { handleRoutes } from "./apigw";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,7 +25,7 @@ export class ExpensesBeStack extends cdk.Stack {
 
     // Create a NodejsFunction
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleExpenses/index.ts"),
       handler: "handler",
       environment: {
@@ -33,7 +34,7 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     const handleBudgetsLambda = new NodejsFunction(this, "HandleBudgetFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleBudget/index.ts"),
       handler: "handler",
       environment: {
@@ -51,47 +52,15 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Integrate Lambda with API Gateway
-    const createExpensesIntegration = new apigateway.LambdaIntegration(
-      handleExpensesLambda,
-      {
-        requestTemplates: { "application/json": '{"statusCode": 200}' },
-      }
+    const expensesIntegration = new apigateway.LambdaIntegration(
+      handleExpensesLambda
     );
 
-    const budgetIntegration = new apigateway.LambdaIntegration(
-      handleBudgetsLambda,
-      {
-        requestTemplates: { "application/json": '{"statusCode": 200}' },
-      }
+    const budgetsIntegration = new apigateway.LambdaIntegration(
+      handleBudgetsLambda
     );
 
-    // /expenses route
-    const expenses = api.root.addResource("expenses");
-
-    const handleExpenses = expenses
-      .addResource("{userId}")
-      .addResource("{budgetId}");
-
-    // POST /expenses/{userId}/{budgetId}
-    handleExpenses.addMethod("POST", createExpensesIntegration);
-
-    // GET /expenses/{userId}/{budgetId}
-    handleExpenses.addMethod("GET", createExpensesIntegration);
-
-    // /expenses/{userId}/{budgetId}/{expenseId} route
-    handleExpenses
-      .addResource("{expenseId}")
-      .addMethod("GET", createExpensesIntegration);
-
-    // /budgets route
-    const budgets = api.root.addResource("budgets");
-    const handleBudgets = budgets.addResource("{userId}");
-    // POST /budgets/{userId}
-    handleBudgets.addMethod("POST", budgetIntegration);
-    // GET /budgets/{userId}
-    handleBudgets.addMethod("GET", budgetIntegration);
-    // GET /budgets/{userId}/{budgetId}
-    handleBudgets.addResource("{budgetId}").addMethod("GET", budgetIntegration);
+    handleRoutes(api, { expensesIntegration, budgetsIntegration });
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/

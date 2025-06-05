@@ -1,0 +1,52 @@
+import { aws_apigateway } from "aws-cdk-lib";
+
+export const handleRoutes = (
+  api: aws_apigateway.RestApi,
+  {
+    expensesIntegration,
+    budgetsIntegration,
+  }: {
+    expensesIntegration: aws_apigateway.LambdaIntegration;
+    budgetsIntegration: aws_apigateway.LambdaIntegration;
+  }
+) => {
+  handleExpensesRoutes(api, expensesIntegration);
+  handleBudgetsRoutes(api, budgetsIntegration);
+};
+
+const handleExpensesRoutes = (
+  api: aws_apigateway.RestApi,
+  integration: aws_apigateway.LambdaIntegration
+) => {
+  const expenses = api.root.addResource("expenses");
+
+  const handleExpenses = expenses
+    .addResource("{userId}")
+    .addResource("{budgetId}");
+
+  // POST /expenses/{userId}/{budgetId}
+  handleExpenses.addMethod("POST", integration);
+
+  // GET /expenses/{userId}/{budgetId}
+  handleExpenses.addMethod("GET", integration);
+
+  // GET /expenses/{userId}/{budgetId}/{expenseId} route
+  handleExpenses.addResource("{expenseId}").addMethod("GET", integration);
+};
+
+const handleBudgetsRoutes = (
+  api: aws_apigateway.RestApi,
+  integration: aws_apigateway.LambdaIntegration
+) => {
+  const budgets = api.root.addResource("budgets");
+  const handleBudgets = budgets.addResource("{userId}");
+
+  // POST /budgets/{userId}
+  handleBudgets.addMethod("POST", integration);
+
+  // GET /budgets/{userId}
+  handleBudgets.addMethod("GET", integration);
+
+  // GET /budgets/{userId}/{budgetId}
+  handleBudgets.addResource("{budgetId}").addMethod("GET", integration);
+};

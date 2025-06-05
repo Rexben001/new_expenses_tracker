@@ -9,11 +9,14 @@ export const getBudget = async ({
   userId: string;
   budgetId?: string;
 }) => {
-  const keyConditionExpression = "PK = :pk AND SK = :sk";
+  const keyConditionExpression = budgetId
+    ? "PK = :pk AND SK = :sk"
+    : "PK = :pk AND begins_with(SK, :skPrefix)";
 
   const expressionAttributeValues = {
     ":pk": { S: `USER#${userId}` },
-    ":sk": { S: budgetId ? `BUDGET#${budgetId}` : "BUDGET" },
+    ":sk": { S: budgetId ? `BUDGET#${budgetId}` : "" },
+    ":skPrefix": { S: "BUDGET#" },
   };
 
   try {

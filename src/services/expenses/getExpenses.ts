@@ -11,11 +11,14 @@ export const getExpenses = async ({
   expenseId?: string;
   budgetId?: string;
 }) => {
-  const keyConditionExpression = "PK = :pk AND SK = :sk";
+  const keyConditionExpression = expenseId
+    ? "PK = :pk AND SK = :sk"
+    : "PK = :pk AND begins_with(SK, :skPrefix)";
 
   const expressionAttributeValues = {
     ":pk": { S: getPK(userId, budgetId) },
     ":sk": { S: getSK(expenseId) },
+    ":skPrefix": { S: "EXPENSE#" },
   };
   try {
     const items = await dbService.queryItems(
@@ -51,5 +54,5 @@ const getPK = (userId: string, budgetId?: string): string => {
 };
 
 const getSK = (expenseId?: string): string => {
-  return expenseId ? `EXPENSE#${expenseId}` : "EXPENSE";
+  return expenseId ? `EXPENSE#${expenseId}` : "";
 };
