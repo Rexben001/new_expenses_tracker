@@ -34,10 +34,7 @@ export class ExpensesBeStack extends cdk.Stack {
 
     const handleBudgetsLambda = new NodejsFunction(this, "HandleBudgetFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
-      entry: path.join(
-        __dirname,
-        "../src/handlers/handleBudget/index.ts" 
-      ),
+      entry: path.join(__dirname, "../src/handlers/handleBudget/index.ts"),
       handler: "handler",
       environment: {
         TABLE_NAME: table.tableName,
@@ -78,7 +75,10 @@ export class ExpensesBeStack extends cdk.Stack {
     // POST /expenses/{userId}/{budgetId}
     handleExpenses.addMethod("POST", createExpensesIntegration);
 
-    // /expenses/{userId}/{budgetId} route
+    // GET /expenses/{userId}/{budgetId}
+    handleExpenses.addMethod("GET", createExpensesIntegration);
+
+    // /expenses/{userId}/{budgetId}/{expenseId} route
     handleExpenses
       .addResource("{expenseId}")
       .addMethod("GET", createExpensesIntegration);
@@ -88,6 +88,8 @@ export class ExpensesBeStack extends cdk.Stack {
     const handleBudgets = budgets.addResource("{userId}");
     // POST /budgets/{userId}
     handleBudgets.addMethod("POST", budgetIntegration);
+    // GET /budgets/{userId}
+    handleBudgets.addMethod("GET", budgetIntegration);
     // GET /budgets/{userId}/{budgetId}
     handleBudgets.addResource("{budgetId}").addMethod("GET", budgetIntegration);
 

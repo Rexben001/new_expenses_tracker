@@ -1,7 +1,7 @@
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DocumentClient } from "../utils/dynamodb";
 import { PutItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 export interface DbService {
   getItem(key: Record<string, any>): Promise<Record<string, any>>;
@@ -70,7 +70,7 @@ export function makeDbService(
           `No items found with condition ${keyConditionExpression}`
         );
       }
-      return response.Items;
+      return response.Items.map((item) => unmarshall(item));
     },
   };
 }
