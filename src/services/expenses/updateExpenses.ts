@@ -46,7 +46,7 @@ export const updateExpenses = async ({
 
   const item = await dbService.updateItem(
     { PK: pk, SK: sk },
-    updateExpression,
+    `SET ${updateExpression}`,
     expressionAttributeNames,
     expressionAttributeValues
   );
