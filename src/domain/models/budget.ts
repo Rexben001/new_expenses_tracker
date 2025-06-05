@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const BudgetSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().min(1, "Name is required"),
+  title: z.string().min(1, "Title is required"),
   amount: z.number().positive("Amount must be a positive number"),
   description: z.string().optional(),
   period: z.enum(["monthly", "yearly"], {
@@ -18,7 +18,7 @@ export const BudgetSchema = z.object({
 export type Budget = z.infer<typeof BudgetSchema>;
 
 export const BudgetRequestSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  title: z.string().min(1, "Title is required"),
   amount: z.number().positive("Amount must be a positive number"),
   description: z.string().optional(),
   period: z.enum(["monthly", "yearly"], {

@@ -32,7 +32,7 @@ export const getBudget = async ({
 
   const budget = items.map((item) => ({
     id: item.id,
-    name: item.name,
+    title: item.title,
     amount: item.amount,
     currency: item.currency,
     updatedAt: item.updatedAt,
