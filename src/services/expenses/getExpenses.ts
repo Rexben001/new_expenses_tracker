@@ -14,8 +14,8 @@ export const getExpenses = async ({
   const keyConditionExpression = "PK = :pk AND SK = :sk";
 
   const expressionAttributeValues = {
-    ":pk": getPK(userId, budgetId),
-    ":sk": getSK(expenseId),
+    ":pk": { S: getPK(userId, budgetId) },
+    ":sk": { S: getSK(expenseId) },
   };
   try {
     const items = await dbService.queryItems(

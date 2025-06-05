@@ -12,8 +12,8 @@ export const getBudget = async ({
   const keyConditionExpression = "PK = :pk AND SK = :sk";
 
   const expressionAttributeValues = {
-    ":pk": `USER#${userId}`,
-    ":sk": budgetId ? `BUDGET#${budgetId}` : "BUDGET",
+    ":pk": { S: `USER#${userId}` },
+    ":sk": { S: budgetId ? `BUDGET#${budgetId}` : "BUDGET" },
   };
 
   try {
