@@ -59,6 +59,12 @@ export function makeDbService(
       });
       const response = await client.send(command);
 
+      console.log({
+        keyConditionExpression,
+        expressionAttributeValues,
+        item: response.Items,
+      });
+
       if (!response.Items || response.Items.length === 0) {
         throw new Error(
           `No items found with condition ${keyConditionExpression}`
