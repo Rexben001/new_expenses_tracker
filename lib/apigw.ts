@@ -35,9 +35,11 @@ const handleExpensesRoutes = (
   handleExpensesWithBudget.addMethod("GET", integration);
 
   // GET /expenses/{userId}/{budgetId}/{expenseId} route
-  handleExpensesWithBudget
-    .addResource("{expenseId}")
-    .addMethod("GET", integration);
+  const withExpenseId = handleExpensesWithBudget.addResource("{expenseId}");
+
+  withExpenseId.addMethod("GET", integration);
+  // PUT /expenses/{userId}/{budgetId}/{expenseId} route
+  withExpenseId.addMethod("PUT", integration);
 };
 
 const handleBudgetsRoutes = (

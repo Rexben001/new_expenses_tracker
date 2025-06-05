@@ -1,6 +1,10 @@
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DocumentClient } from "../utils/dynamodb";
-import { PutItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  PutItemCommand,
+  QueryCommand,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 export interface DbService {
@@ -11,6 +15,12 @@ export interface DbService {
     keyConditionExpression: string,
     expressionAttributeValues: Record<string, any>
   ): Promise<Record<string, any>[]>;
+  updateItem(
+    key: Record<string, any>,
+    updateExpression: string,
+    expressionAttributeNames: Record<string, string>,
+    expressionAttributeValues: Record<string, any>
+  ): Promise<Record<string, any>>;
 }
 
 export function makeDbService(
@@ -41,9 +51,7 @@ export function makeDbService(
         ConditionExpression:
           "attribute_not_exists(PK) AND attribute_not_exists(SK)", // optional safety
       });
-      const resp = await client.send(command);
-
-      console.log("PutItem response:", resp);
+      await client.send(command);
     },
 
     async queryItems(
@@ -59,18 +67,31 @@ export function makeDbService(
       });
       const response = await client.send(command);
 
-      console.log({
-        keyConditionExpression,
-        expressionAttributeValues,
-        item: response.Items,
-      });
-
       if (!response.Items || response.Items.length === 0) {
         throw new Error(
           `No items found with condition ${keyConditionExpression}`
         );
       }
       return response.Items.map((item) => unmarshall(item));
+    },
+
+    async updateItem(
+      key: Record<string, any>,
+      updateExpression: string,
+      expressionAttributeNames: Record<string, string>,
+      expressionAttributeValues: Record<string, any>
+    ) {
+      const command = new UpdateItemCommand({
+        TableName: tableName,
+        Key: marshall(key),
+        UpdateExpression: updateExpression,
+        ExpressionAttributeValues: marshall(expressionAttributeValues),
+        ExpressionAttributeNames: expressionAttributeNames,
+        ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)", // optional safety
+        ReturnValues: "ALL_NEW",
+      });
+      const response = await client.send(command);
+      return unmarshall(response.Attributes || {});
     },
   };
 }

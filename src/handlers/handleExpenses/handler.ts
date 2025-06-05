@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { BudgetRequest, BudgetRequestSchema } from "../../domain/models/budget";
 import { createExpenses } from "../../services/expenses/createExpenses";
 import { getExpenses } from "../../services/expenses/getExpenses";
+import { updateExpenses } from "../../services/expenses/updateExpenses";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent) => {
@@ -32,6 +33,20 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             userId: userId ?? "",
             expenseId: event.pathParameters?.expenseId,
             budgetId: event.pathParameters?.budgetId,
+          });
+
+        case "PUT":
+          if (!event.pathParameters?.expenseId) {
+            throw new HttpError("Expense ID is required for updating", 400, {
+              cause: new Error("Expense ID is missing from path parameters"),
+            });
+          }
+          return await updateExpenses({
+            dbService,
+            body: event.body ?? "",
+            userId: userId ?? "",
+            budgetId: event.pathParameters?.budgetId,
+            expenseId: event.pathParameters?.expenseId,
           });
         default:
           throw new HttpError("Method not allowed", 405, {
