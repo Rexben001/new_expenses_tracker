@@ -30,7 +30,14 @@ export const getBudget = async ({
     };
   }
 
-  const budget = items;
+  const budget = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    amount: item.amount,
+    currency: item.currency,
+    updatedAt: item.updatedAt,
+    userId: item.userId,
+  }));
 
   return {
     statusCode: 200,

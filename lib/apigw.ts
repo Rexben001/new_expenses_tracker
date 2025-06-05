@@ -20,18 +20,24 @@ const handleExpensesRoutes = (
 ) => {
   const expenses = api.root.addResource("expenses");
 
-  const handleExpenses = expenses
-    .addResource("{userId}")
-    .addResource("{budgetId}");
+  const handleExpenses = expenses.addResource("{userId}");
 
-  // POST /expenses/{userId}/{budgetId}
   handleExpenses.addMethod("POST", integration);
 
-  // GET /expenses/{userId}/{budgetId}
   handleExpenses.addMethod("GET", integration);
 
+  const handleExpensesWithBudget = handleExpenses.addResource("{budgetId}");
+
+  // POST /expenses/{userId}/{budgetId}
+  handleExpensesWithBudget.addMethod("POST", integration);
+
+  // GET /expenses/{userId}/{budgetId}
+  handleExpensesWithBudget.addMethod("GET", integration);
+
   // GET /expenses/{userId}/{budgetId}/{expenseId} route
-  handleExpenses.addResource("{expenseId}").addMethod("GET", integration);
+  handleExpensesWithBudget
+    .addResource("{expenseId}")
+    .addMethod("GET", integration);
 };
 
 const handleBudgetsRoutes = (
