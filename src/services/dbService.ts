@@ -1,6 +1,7 @@
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DocumentClient } from "../utils/dynamodb";
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
+import { PutItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 
 export interface DbService {
   getItem(key: Record<string, any>): Promise<Record<string, any>>;
@@ -34,9 +35,11 @@ export function makeDbService(
     },
 
     async putItem(item: Record<string, any>) {
-      const command = new PutCommand({
+      const command = new PutItemCommand({
         TableName: tableName,
-        Item: item,
+        Item: marshall(item),
+        ConditionExpression:
+          "attribute_not_exists(PK) AND attribute_not_exists(SK)", // optional safety
       });
       const resp = await client.send(command);
 

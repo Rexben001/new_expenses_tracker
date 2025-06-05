@@ -16,37 +16,37 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     // Create a DynamoDB table
-    const table = new dynamodb.Table(this, "ExpensesTable", {
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+    const table = new dynamodb.Table(this, "BudgetAppTable", {
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      tableName: "Expenses",
     });
 
     // Create a NodejsFunction
-    const createExpensesLambda = new NodejsFunction(this, "CreateExpensesFn", {
+    const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
-      entry: path.join(__dirname, "../src/handlers/createExpenses/index.ts"),
+      entry: path.join(__dirname, "../src/handlers/handleExpenses/index.ts"),
       handler: "handler",
       environment: {
         TABLE_NAME: table.tableName,
       },
     });
 
-    const getExpensesLambda = new NodejsFunction(this, "GetExpensesFunction", {
+    const handleBudgetsLambda = new NodejsFunction(this, "HandleBudgetFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST, // Use Node.js 18 runtime
       entry: path.join(
         __dirname,
-        "../src/handlers/getExpenses/index.ts" // Path to your Lambda function entry file
-      ), // Path to your Lambda function code
-      handler: "handler", // The exported handler function in your Lambda code
+        "../src/handlers/handleBudget/index.ts" 
+      ),
+      handler: "handler",
       environment: {
-        TABLE_NAME: table.tableName, // Pass the table name as an environment variable
+        TABLE_NAME: table.tableName,
       },
     });
 
     // Grant the Lambda function permissions to read and write to the DynamoDB table
-    table.grantReadWriteData(createExpensesLambda);
-    table.grantReadWriteData(getExpensesLambda);
+    table.grantReadWriteData(handleExpensesLambda);
+    table.grantReadWriteData(handleBudgetsLambda);
 
     const api = new apigateway.RestApi(this, "ExpensesApi", {
       restApiName: "Expenses Service",
@@ -55,13 +55,14 @@ export class ExpensesBeStack extends cdk.Stack {
 
     // Integrate Lambda with API Gateway
     const createExpensesIntegration = new apigateway.LambdaIntegration(
-      createExpensesLambda,
+      handleExpensesLambda,
       {
         requestTemplates: { "application/json": '{"statusCode": 200}' },
       }
     );
-    const getExpensesIntegration = new apigateway.LambdaIntegration(
-      getExpensesLambda,
+
+    const budgetIntegration = new apigateway.LambdaIntegration(
+      handleBudgetsLambda,
       {
         requestTemplates: { "application/json": '{"statusCode": 200}' },
       }
@@ -69,13 +70,26 @@ export class ExpensesBeStack extends cdk.Stack {
 
     // /expenses route
     const expenses = api.root.addResource("expenses");
-    expenses.addMethod("POST", createExpensesIntegration); // POST /expenses
 
-    expenses.addMethod("GET", getExpensesIntegration); // GET /expenses
-    const userId = expenses.addResource("{userId}");
-    const expenseId = userId.addResource("{expenseId}");
+    const handleExpenses = expenses
+      .addResource("{userId}")
+      .addResource("{budgetId}");
 
-    expenseId.addMethod("GET", getExpensesIntegration); // GET /expenses/{id}
+    // POST /expenses/{userId}/{budgetId}
+    handleExpenses.addMethod("POST", createExpensesIntegration);
+
+    // /expenses/{userId}/{budgetId} route
+    handleExpenses
+      .addResource("{expenseId}")
+      .addMethod("GET", createExpensesIntegration);
+
+    // /budgets route
+    const budgets = api.root.addResource("budgets");
+    const handleBudgets = budgets.addResource("{userId}");
+    // POST /budgets/{userId}
+    handleBudgets.addMethod("POST", budgetIntegration);
+    // GET /budgets/{userId}/{budgetId}
+    handleBudgets.addResource("{budgetId}").addMethod("GET", budgetIntegration);
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
