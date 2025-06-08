@@ -1,4 +1,5 @@
 import { aws_apigateway } from "aws-cdk-lib";
+import { MethodOptions } from "aws-cdk-lib/aws-apigateway";
 
 export const handleRoutes = (
   api: aws_apigateway.RestApi,
@@ -13,20 +14,42 @@ export const handleRoutes = (
     usersIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
-  handleExpensesRoutes(api, authorizer, expensesIntegration);
-  handleBudgetsRoutes(api, authorizer, budgetsIntegration);
-  handleUsersRoutes(api, authorizer, usersIntegration);
-};
-
-const handleExpensesRoutes = (
-  api: aws_apigateway.RestApi,
-  authorizer: aws_apigateway.CognitoUserPoolsAuthorizer,
-  integration: aws_apigateway.LambdaIntegration
-) => {
   const authorizerParams = {
     authorizer,
     authorizationType: aws_apigateway.AuthorizationType.COGNITO,
   };
+
+  const budgetRootResource = api.root.addResource("budgets");
+
+  const budgetIdResource = budgetRootResource.addResource("{budgetId}");
+
+  handleExpensesRoutes({
+    api,
+    authorizerParams,
+    integration: expensesIntegration,
+    budgetIdResource,
+  });
+  handleBudgetsRoutes({
+    api,
+    authorizerParams,
+    integration: budgetsIntegration,
+    budgetRootResource,
+    budgetIdResource,
+  });
+  handleUsersRoutes({ api, authorizerParams, integration: usersIntegration });
+};
+
+const handleExpensesRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+  budgetIdResource,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+  budgetIdResource: aws_apigateway.Resource;
+}) => {
   const handleExpenses = api.root.addResource("expenses");
 
   handleExpenses.addMethod("POST", integration, authorizerParams);
@@ -44,53 +67,48 @@ const handleExpensesRoutes = (
   withExpenseId.addMethod("DELETE", integration, authorizerParams);
 
   // handle budgets/{budgetId}/expenses route
-  const handleBudgetExpenses = api.root
-    .addResource("budgets")
-    .addResource("{budgetId}")
-    .addResource("expenses");
+  const handleBudgetExpenses = budgetIdResource.addResource("expenses");
   handleBudgetExpenses.addMethod("POST", integration, authorizerParams);
   handleBudgetExpenses.addMethod("GET", integration, authorizerParams);
 };
 
-const handleBudgetsRoutes = (
-  api: aws_apigateway.RestApi,
-  authorizer: aws_apigateway.CognitoUserPoolsAuthorizer,
-  integration: aws_apigateway.LambdaIntegration
-) => {
-  const authorizerParams = {
-    authorizer,
-    authorizationType: aws_apigateway.AuthorizationType.COGNITO,
-  };
-
-  const handleBudgets = api.root.addResource("budgets");
-
+const handleBudgetsRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+  budgetRootResource,
+  budgetIdResource,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+  budgetRootResource: aws_apigateway.Resource;
+  budgetIdResource: aws_apigateway.Resource;
+}) => {
   // POST /budgets
-  handleBudgets.addMethod("POST", integration, authorizerParams);
+  budgetRootResource.addMethod("POST", integration, authorizerParams);
 
   // GET /budgets
-  handleBudgets.addMethod("GET", integration, authorizerParams);
-
-  const handleBudgetsWithId = handleBudgets.addResource("{budgetId}");
+  budgetRootResource.addMethod("GET", integration, authorizerParams);
 
   // GET /budgets/{budgetId}
-  handleBudgetsWithId.addMethod("GET", integration, authorizerParams);
+  budgetIdResource.addMethod("GET", integration, authorizerParams);
 
   // PUT /budgets/{budgetId}
-  handleBudgetsWithId.addMethod("PUT", integration, authorizerParams);
+  budgetIdResource.addMethod("PUT", integration, authorizerParams);
   // DELETE /budgets/{budgetId}
-  handleBudgetsWithId.addMethod("DELETE", integration, authorizerParams);
+  budgetIdResource.addMethod("DELETE", integration, authorizerParams);
 };
 
-const handleUsersRoutes = (
-  api: aws_apigateway.RestApi,
-  authorizer: aws_apigateway.CognitoUserPoolsAuthorizer,
-  integration: aws_apigateway.LambdaIntegration
-) => {
-  const authorizerParams = {
-    authorizer,
-    authorizationType: aws_apigateway.AuthorizationType.COGNITO,
-  };
-
+const handleUsersRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
   const users = api.root.addResource("users");
 
   // GET /users/{userId}
