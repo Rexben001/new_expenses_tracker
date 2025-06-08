@@ -10,14 +10,18 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         const userId = event.request.userAttributes.sub;
         const email = event.request.userAttributes.email;
 
-        await createUser({
+        return await createUser({
           dbService,
           userId,
           email,
         });
-        return event;
       }
-      return event;
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          message: "Invalid event type. Expected PostConfirmationTriggerEvent.",
+        }),
+      };
     } catch (error) {
       console.error("Error in handler:", error);
       return {

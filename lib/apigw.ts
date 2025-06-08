@@ -6,13 +6,16 @@ export const handleRoutes = (
   {
     expensesIntegration,
     budgetsIntegration,
+    usersIntegration,
   }: {
     expensesIntegration: aws_apigateway.LambdaIntegration;
     budgetsIntegration: aws_apigateway.LambdaIntegration;
+    usersIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
   handleExpensesRoutes(api, authorizer, expensesIntegration);
   handleBudgetsRoutes(api, authorizer, budgetsIntegration);
+  handleUsersRoutes(api, authorizer, usersIntegration);
 };
 
 const handleExpensesRoutes = (
@@ -78,4 +81,24 @@ const handleBudgetsRoutes = (
   handleBudgetsWithId.addMethod("PUT", integration, authorizerParams);
   // DELETE /budgets/{userId}/{budgetId}
   handleBudgetsWithId.addMethod("DELETE", integration, authorizerParams);
+};
+
+const handleUsersRoutes = (
+  api: aws_apigateway.RestApi,
+  authorizer: aws_apigateway.CognitoUserPoolsAuthorizer,
+  integration: aws_apigateway.LambdaIntegration
+) => {
+  const authorizerParams = {
+    authorizer,
+    authorizationType: aws_apigateway.AuthorizationType.COGNITO,
+  };
+
+  const users = api.root.addResource("users");
+
+  // POST /users
+  users.addMethod("POST", integration, authorizerParams);
+
+  // GET /users/{userId}
+  const userIdResource = users.addResource("{userId}");
+  userIdResource.addMethod("GET", integration, authorizerParams);
 };

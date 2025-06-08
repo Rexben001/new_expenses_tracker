@@ -115,7 +115,11 @@ export class ExpensesBeStack extends cdk.Stack {
       handleBudgetsLambda
     );
 
-    handleRoutes(api, authorizer, { expensesIntegration, budgetsIntegration });
+    const usersIntegration = new apigateway.LambdaIntegration(
+      handleUsersLambda
+    );
+
+    handleRoutes(api, authorizer, { expensesIntegration, budgetsIntegration, usersIntegration });
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
