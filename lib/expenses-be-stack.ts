@@ -5,7 +5,6 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
-import * as lambda from "aws-cdk-lib/aws-lambda";
 
 import { handleRoutes } from "./apigw";
 
@@ -18,32 +17,6 @@ export class ExpensesBeStack extends cdk.Stack {
         region: "eu-west-1", // Use AWS region from environment
       },
     });
-
-    const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
-      userPoolName: "expenses-user-pool",
-      selfSignUpEnabled: true,
-      signInAliases: { email: true },
-      autoVerify: { email: true },
-      passwordPolicy: {
-        minLength: 6,
-        requireLowercase: true,
-        requireUppercase: true,
-        requireDigits: true,
-      },
-    });
-
-    const userPoolClient = new cognito.UserPoolClient(
-      this,
-      "ExpensesUserPoolClient",
-      {
-        userPool,
-        generateSecret: false,
-        authFlows: {
-          userPassword: true,
-          custom: true,
-        },
-      }
-    );
 
     const table = new dynamodb.Table(this, "BudgetAppTable", {
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
@@ -69,9 +42,56 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
+    const handleUsersLambda = new NodejsFunction(this, "HandleUsersFn", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      entry: path.join(__dirname, "../src/handlers/handleUsers/index.ts"),
+      handler: "handler",
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+
     // Grant the Lambda function permissions to read and write to the DynamoDB table
     table.grantReadWriteData(handleExpensesLambda);
     table.grantReadWriteData(handleBudgetsLambda);
+    table.grantReadWriteData(handleUsersLambda);
+
+    const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
+      userPoolName: "expenses-user-pool",
+      selfSignUpEnabled: true,
+      signInAliases: { email: true },
+      autoVerify: { email: true },
+      passwordPolicy: {
+        minLength: 6,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+      },
+      userVerification: {
+        emailSubject: "Verify your email for our app!",
+        emailBody:
+          "Hello! Thanks for signing up. Your verification code is {####}",
+        emailStyle: cognito.VerificationEmailStyle.CODE,
+      },
+    });
+
+    const userPoolClient = new cognito.UserPoolClient(
+      this,
+      "ExpensesUserPoolClient",
+      {
+        userPool,
+        generateSecret: false,
+        authFlows: {
+          userPassword: true,
+          custom: true,
+        },
+      }
+    );
+
+    userPool.addTrigger(
+      cognito.UserPoolOperation.POST_CONFIRMATION,
+      handleUsersLambda
+    );
 
     const api = new apigateway.RestApi(this, "ExpensesApi", {
       restApiName: "Expenses Service",
