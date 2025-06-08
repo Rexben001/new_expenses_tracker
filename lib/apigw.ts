@@ -30,7 +30,6 @@ export const handleRoutes = (
     budgetIdResource,
   });
   handleBudgetsRoutes({
-    api,
     authorizerParams,
     integration: budgetsIntegration,
     budgetRootResource,
@@ -55,31 +54,33 @@ const handleExpensesRoutes = ({
   handleExpenses.addMethod("POST", integration, authorizerParams);
   handleExpenses.addMethod("GET", integration, authorizerParams);
 
-  // GET /expenses/{budgetId}/{expenseId} route
-  const withExpenseId = handleExpenses
-    .addResource("{budgetId}")
-    .addResource("{expenseId}");
+  // GET /expenses/{expenseId} route
+  const withExpenseId = handleExpenses.addResource("{expenseId}");
 
   withExpenseId.addMethod("GET", integration, authorizerParams);
-  // PUT /expenses/{budgetId}/{expenseId} route
+  // PUT /expenses/{expenseId} route
   withExpenseId.addMethod("PUT", integration, authorizerParams);
-  // DELETE /expenses/{budgetId}/{expenseId} route
+  // DELETE /expenses/{expenseId} route
   withExpenseId.addMethod("DELETE", integration, authorizerParams);
 
   // handle budgets/{budgetId}/expenses route
   const handleBudgetExpenses = budgetIdResource.addResource("expenses");
   handleBudgetExpenses.addMethod("POST", integration, authorizerParams);
   handleBudgetExpenses.addMethod("GET", integration, authorizerParams);
+
+  // GET /budgets/{budgetId}/expenses/{expenseId} route
+  const withBudgetExpenseId = handleBudgetExpenses.addResource("{expenseId}");
+  withBudgetExpenseId.addMethod("GET", integration, authorizerParams);
+  withBudgetExpenseId.addMethod("PUT", integration, authorizerParams);
+  withBudgetExpenseId.addMethod("DELETE", integration, authorizerParams);
 };
 
 const handleBudgetsRoutes = ({
-  api,
   authorizerParams,
   integration,
   budgetRootResource,
   budgetIdResource,
 }: {
-  api: aws_apigateway.RestApi;
   authorizerParams: MethodOptions;
   integration: aws_apigateway.LambdaIntegration;
   budgetRootResource: aws_apigateway.Resource;
