@@ -1,6 +1,7 @@
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DocumentClient } from "../utils/dynamodb";
 import {
+  DeleteItemCommand,
   PutItemCommand,
   QueryCommand,
   UpdateItemCommand,
@@ -21,6 +22,7 @@ export interface DbService {
     expressionAttributeNames: Record<string, string>,
     expressionAttributeValues: Record<string, any>
   ): Promise<Record<string, any>>;
+  deleteItem(key: Record<string, any>): Promise<void>;
 }
 
 export function makeDbService(
@@ -93,5 +95,42 @@ export function makeDbService(
       const response = await client.send(command);
       return unmarshall(response.Attributes || {});
     },
+
+    async deleteItem(key: Record<string, any>) {
+      const command = new DeleteItemCommand({
+        TableName: tableName,
+        Key: marshall(key),
+        ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)", // optional safety
+      });
+      await client.send(command);
+    },
+
+    // async deleteItemsByPrefix(
+    //   partitionKey: string,
+    //   prefix: string
+    // ): Promise<void> {
+    //   const command = new QueryCommand({
+    //     TableName: tableName,
+    //     KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+    //     ExpressionAttributeValues: {
+    //       ":pk": { S: partitionKey },
+    //       ":skPrefix": { S: prefix },
+    //     },
+    //   });
+
+    //   const response = await client.send(command);
+    //   const items = response.Items || [];
+
+    //   for (const item of items) {
+    //     const deleteCommand = new DeleteItemCommand({
+    //       TableName: tableName,
+    //       Key: {
+    //         PK: item.PK,
+    //         SK: item.SK,
+    //       },
+    //     });
+    //     await client.send(deleteCommand);
+    //   }
+    // }
   };
 }

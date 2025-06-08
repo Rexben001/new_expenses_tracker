@@ -40,6 +40,8 @@ const handleExpensesRoutes = (
   withExpenseId.addMethod("GET", integration);
   // PUT /expenses/{userId}/{budgetId}/{expenseId} route
   withExpenseId.addMethod("PUT", integration);
+  // DELETE /expenses/{userId}/{budgetId}/{expenseId} route
+  withExpenseId.addMethod("DELETE", integration);
 };
 
 const handleBudgetsRoutes = (
@@ -57,4 +59,9 @@ const handleBudgetsRoutes = (
 
   // GET /budgets/{userId}/{budgetId}
   handleBudgets.addResource("{budgetId}").addMethod("GET", integration);
+
+  // PUT /budgets/{userId}/{budgetId}
+  handleBudgets.addResource("{budgetId}").addMethod("PUT", integration);
+  // DELETE /budgets/{userId}/{budgetId}
+  handleBudgets.addResource("{budgetId}").addMethod("DELETE", integration);
 };
