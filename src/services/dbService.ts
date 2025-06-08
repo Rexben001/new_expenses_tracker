@@ -70,9 +70,7 @@ export function makeDbService(
       const response = await client.send(command);
 
       if (!response.Items || response.Items.length === 0) {
-        throw new Error(
-          `No items found with condition ${keyConditionExpression}`
-        );
+        return [];
       }
       return response.Items.map((item) => unmarshall(item));
     },

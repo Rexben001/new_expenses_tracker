@@ -30,25 +30,26 @@ const handleExpensesRoutes = (
   const handleExpenses = api.root.addResource("expenses");
 
   handleExpenses.addMethod("POST", integration, authorizerParams);
-
   handleExpenses.addMethod("GET", integration, authorizerParams);
 
-  const handleExpensesWithBudget = handleExpenses.addResource("{budgetId}");
-
-  // POST /expenses/{budgetId}
-  handleExpensesWithBudget.addMethod("POST", integration, authorizerParams);
-
-  // GET /expenses/{budgetId}
-  handleExpensesWithBudget.addMethod("GET", integration, authorizerParams);
-
   // GET /expenses/{budgetId}/{expenseId} route
-  const withExpenseId = handleExpensesWithBudget.addResource("{expenseId}");
+  const withExpenseId = handleExpenses
+    .addResource("{budgetId}")
+    .addResource("{expenseId}");
 
   withExpenseId.addMethod("GET", integration, authorizerParams);
   // PUT /expenses/{budgetId}/{expenseId} route
   withExpenseId.addMethod("PUT", integration, authorizerParams);
   // DELETE /expenses/{budgetId}/{expenseId} route
   withExpenseId.addMethod("DELETE", integration, authorizerParams);
+
+  // handle budgets/{budgetId}/expenses route
+  const handleBudgetExpenses = api.root
+    .addResource("budgets")
+    .addResource("{budgetId}")
+    .addResource("expenses");
+  handleBudgetExpenses.addMethod("POST", integration, authorizerParams);
+  handleBudgetExpenses.addMethod("GET", integration, authorizerParams);
 };
 
 const handleBudgetsRoutes = (
