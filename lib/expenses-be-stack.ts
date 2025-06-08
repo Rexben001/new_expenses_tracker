@@ -97,5 +97,10 @@ export class ExpensesBeStack extends cdk.Stack {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
       description: "The base URL of the API Gateway",
     });
+
+    new cdk.CfnOutput(this, "UserPoolId", { value: userPool.userPoolId });
+    new cdk.CfnOutput(this, "UserPoolClientId", {
+      value: userPoolClient.userPoolClientId,
+    });
   }
 }
