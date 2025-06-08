@@ -92,9 +92,6 @@ const handleUsersRoutes = (
 
   const users = api.root.addResource("users");
 
-  // POST /users
-  users.addMethod("POST", integration, authorizerParams);
-
   // GET /users/{userId}
   const userIdResource = users.addResource("{userId}");
   userIdResource.addMethod("GET", integration, authorizerParams);

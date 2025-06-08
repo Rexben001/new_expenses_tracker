@@ -20,6 +20,14 @@ export const getExpenses = async ({
     expenseId
   );
 
+  console.log({
+    keyConditionExpression,
+    expressionAttributeValues,
+    userId,
+    budgetId,
+    expenseId,
+  });
+
   const items = await dbService.queryItems(
     keyConditionExpression,
     expressionAttributeValues

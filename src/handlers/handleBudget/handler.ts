@@ -53,7 +53,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
           });
       }
     } catch (error) {
-      console.error("Error creating budget:", error);
+      console.error("Error handling budget:", error);
       return {
         statusCode: 500,
         body: JSON.stringify({ message: "Internal server error" }),
