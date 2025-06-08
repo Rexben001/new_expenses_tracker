@@ -1,12 +1,12 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
-import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 
 import { handleRoutes } from "./apigw";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -18,10 +18,15 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
-    const table = new dynamodb.Table(this, "BudgetAppTable", {
-      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    const table = new Table(this, "BudgetAppTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
+    table.addGlobalSecondaryIndex({
+      indexName: "CategoryIndex",
+      partitionKey: { name: "category", type: AttributeType.STRING },
     });
 
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {

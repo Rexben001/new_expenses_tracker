@@ -14,6 +14,7 @@ export const BudgetSchema = z.object({
   updatedAt: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Date must be a valid date string",
   }),
+  category: z.string().optional(),
 });
 export type Budget = z.infer<typeof BudgetSchema>;
 
@@ -26,5 +27,6 @@ export const BudgetRequestSchema = z.object({
   }),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid().optional(),
+  category: z.string().optional(), // Optional category field
 });
 export type BudgetRequest = z.infer<typeof BudgetRequestSchema>;

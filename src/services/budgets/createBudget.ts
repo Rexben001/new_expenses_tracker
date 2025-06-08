@@ -21,12 +21,15 @@ export const createBudget = async ({
   const pk = `USER#${userId}`;
   const sk = `BUDGET#${budgetId}`;
 
+  const category = parsedBody.category || "Others"; // Default category if not provided
+
   const item = {
     ...parsedBody,
     PK: pk,
     SK: sk,
     userId,
     id: budgetId,
+    category,
     updatedAt: new Date().toISOString(),
   };
 

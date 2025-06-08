@@ -7,8 +7,7 @@ export const ExpenseSchema = z.object({
   updatedAt: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Date must be a valid date string",
   }),
-  categoryId: z.string().uuid().optional(),
-  budgetId: z.string().uuid().optional(),
+  category: z.string().optional(),
   description: z.string().optional(),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid().optional(),
@@ -18,7 +17,7 @@ export type Expense = z.infer<typeof ExpenseSchema>;
 export const ExpenseRequestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   amount: z.number().positive("Amount must be a positive number"),
-  categoryId: z.string().uuid().optional(),
+  category: z.string().optional(),
   budgetId: z.string().uuid().optional(),
   description: z.string().optional(),
   currency: z.string().min(1, "Currency is required"),

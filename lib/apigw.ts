@@ -46,7 +46,8 @@ const handleExpensesRoutes = ({
   const additionaLMethodOptions: MethodOptions = {
     ...authorizerParams,
     requestParameters: {
-      "method.request.path.budgetId": true, // Ensure budgetId is passed in the path
+      "method.request.querystring.category": false,
+      "method.request.querystring.budgetId": false,
     },
   };
 

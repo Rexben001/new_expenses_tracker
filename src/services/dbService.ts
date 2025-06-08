@@ -12,9 +12,9 @@ export interface DbService {
   getItem(key: Record<string, any>): Promise<Record<string, any>>;
   putItem(item: Record<string, any>): Promise<void>;
   queryItems(
-    // indexName: string,
     keyConditionExpression: string,
-    expressionAttributeValues: Record<string, any>
+    expressionAttributeValues: Record<string, any>,
+    indexName?: string
   ): Promise<Record<string, any>[]>;
   updateItem(
     key: Record<string, any>,
@@ -57,13 +57,13 @@ export function makeDbService(
     },
 
     async queryItems(
-      // indexName: string,
       keyConditionExpression: string,
-      expressionAttributeValues: Record<string, any>
+      expressionAttributeValues: Record<string, any>,
+      indexName: string
     ) {
       const command = new QueryCommand({
         TableName: tableName,
-        // IndexName: indexName,
+        ...(indexName && { IndexName: indexName }),
         KeyConditionExpression: keyConditionExpression,
         ExpressionAttributeValues: expressionAttributeValues,
       });

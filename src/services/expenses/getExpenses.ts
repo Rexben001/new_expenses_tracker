@@ -6,27 +6,26 @@ export const getExpenses = async ({
   userId,
   expenseId,
   budgetId,
+  category,
 }: {
   dbService: DbService;
   userId: string;
   expenseId?: string;
   budgetId?: string;
+  category?: string;
 }) => {
-  const keyConditionExpression = getKeyConditionExpression(budgetId, expenseId);
+  const keyConditionExpression = getKeyConditionExpression(
+    budgetId,
+    expenseId,
+    category
+  );
 
   const expressionAttributeValues = getExpressionAttributeValues(
     userId,
     budgetId,
-    expenseId
-  );
-
-  console.log({
-    keyConditionExpression,
-    expressionAttributeValues,
-    userId,
-    budgetId,
     expenseId,
-  });
+    category
+  );
 
   const items = await dbService.queryItems(
     keyConditionExpression,
@@ -52,18 +51,21 @@ export const getExpenses = async ({
 const getExpressionAttributeValues = (
   userId: string,
   budgetId?: string,
-  expenseId?: string
+  expenseId?: string,
+  category?: string
 ): Record<string, any> => {
   if (budgetId && expenseId)
     return {
       ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
       ":sk": { S: `EXPENSE#${expenseId}` },
+      ...(category && { ":category": { S: category } }),
     };
 
   if (budgetId) {
     return {
       ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
       ":skPrefix": { S: "EXPENSE#" },
+      ...(category && { ":category": { S: category } }),
     };
   }
 
@@ -71,26 +73,31 @@ const getExpressionAttributeValues = (
     return {
       ":pk": { S: `USER#${userId}` },
       ":sk": { S: `EXPENSE#${expenseId}` },
+      ...(category && { ":category": { S: category } }),
     };
   }
 
   return {
     ":pk": { S: `USER#${userId}` },
     ":skPrefix": { S: "EXPENSE#" },
+    ...(category && { ":category": { S: category } }),
   };
 };
 
 const getKeyConditionExpression = (
   budgetId?: string,
-  expenseId?: string
+  expenseId?: string,
+  category?: string
 ): string => {
+  const categoryCondition = category ? " AND #category = :category" : "";
+
   if (expenseId) {
-    return "PK = :pk AND SK = :sk";
+    return "PK = :pk AND SK = :sk" + categoryCondition;
   }
 
   if (budgetId) {
-    return "PK = :pk AND begins_with(SK, :skPrefix)";
+    return "PK = :pk AND begins_with(SK, :skPrefix)" + categoryCondition;
   }
 
-  return "PK = :pk AND begins_with(SK, :skPrefix)";
+  return "PK = :pk AND begins_with(SK, :skPrefix)" + categoryCondition;
 };
