@@ -4,6 +4,9 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+
 import { handleRoutes } from "./apigw";
 
 export class ExpensesBeStack extends cdk.Stack {
@@ -15,6 +18,28 @@ export class ExpensesBeStack extends cdk.Stack {
         region: "eu-west-1", // Use AWS region from environment
       },
     });
+
+    const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
+      userPoolName: "expenses-user-pool",
+      selfSignUpEnabled: true,
+      signInAliases: { email: true },
+      autoVerify: { email: true },
+      passwordPolicy: {
+        minLength: 6,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+      },
+    });
+
+    const userPoolClient = new cognito.UserPoolClient(
+      this,
+      "ExpensesUserPoolClient",
+      {
+        userPool,
+        generateSecret: false,
+      }
+    );
 
     const table = new dynamodb.Table(this, "BudgetAppTable", {
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
@@ -49,6 +74,14 @@ export class ExpensesBeStack extends cdk.Stack {
       description: "This service serves expenses.",
     });
 
+    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(
+      this,
+      "ExpensesAuthorizer",
+      {
+        cognitoUserPools: [userPool],
+      }
+    );
+
     // Integrate Lambda with API Gateway
     const expensesIntegration = new apigateway.LambdaIntegration(
       handleExpensesLambda
@@ -58,7 +91,7 @@ export class ExpensesBeStack extends cdk.Stack {
       handleBudgetsLambda
     );
 
-    handleRoutes(api, { expensesIntegration, budgetsIntegration });
+    handleRoutes(api, authorizer, { expensesIntegration, budgetsIntegration });
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
