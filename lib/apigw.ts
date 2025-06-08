@@ -27,9 +27,7 @@ const handleExpensesRoutes = (
     authorizer,
     authorizationType: aws_apigateway.AuthorizationType.COGNITO,
   };
-  const expenses = api.root.addResource("expenses");
-
-  const handleExpenses = expenses.addResource("{userId}");
+  const handleExpenses = api.root.addResource("expenses");
 
   handleExpenses.addMethod("POST", integration, authorizerParams);
 
@@ -37,19 +35,19 @@ const handleExpensesRoutes = (
 
   const handleExpensesWithBudget = handleExpenses.addResource("{budgetId}");
 
-  // POST /expenses/{userId}/{budgetId}
+  // POST /expenses/{budgetId}
   handleExpensesWithBudget.addMethod("POST", integration, authorizerParams);
 
-  // GET /expenses/{userId}/{budgetId}
+  // GET /expenses/{budgetId}
   handleExpensesWithBudget.addMethod("GET", integration, authorizerParams);
 
-  // GET /expenses/{userId}/{budgetId}/{expenseId} route
+  // GET /expenses/{budgetId}/{expenseId} route
   const withExpenseId = handleExpensesWithBudget.addResource("{expenseId}");
 
   withExpenseId.addMethod("GET", integration, authorizerParams);
-  // PUT /expenses/{userId}/{budgetId}/{expenseId} route
+  // PUT /expenses/{budgetId}/{expenseId} route
   withExpenseId.addMethod("PUT", integration, authorizerParams);
-  // DELETE /expenses/{userId}/{budgetId}/{expenseId} route
+  // DELETE /expenses/{budgetId}/{expenseId} route
   withExpenseId.addMethod("DELETE", integration, authorizerParams);
 };
 
@@ -63,23 +61,22 @@ const handleBudgetsRoutes = (
     authorizationType: aws_apigateway.AuthorizationType.COGNITO,
   };
 
-  const budgets = api.root.addResource("budgets");
-  const handleBudgets = budgets.addResource("{userId}");
+  const handleBudgets = api.root.addResource("budgets");
 
-  // POST /budgets/{userId}
+  // POST /budgets
   handleBudgets.addMethod("POST", integration, authorizerParams);
 
-  // GET /budgets/{userId}
+  // GET /budgets
   handleBudgets.addMethod("GET", integration, authorizerParams);
 
   const handleBudgetsWithId = handleBudgets.addResource("{budgetId}");
 
-  // GET /budgets/{userId}/{budgetId}
+  // GET /budgets/{budgetId}
   handleBudgetsWithId.addMethod("GET", integration, authorizerParams);
 
-  // PUT /budgets/{userId}/{budgetId}
+  // PUT /budgets/{budgetId}
   handleBudgetsWithId.addMethod("PUT", integration, authorizerParams);
-  // DELETE /budgets/{userId}/{budgetId}
+  // DELETE /budgets/{budgetId}
   handleBudgetsWithId.addMethod("DELETE", integration, authorizerParams);
 };
 

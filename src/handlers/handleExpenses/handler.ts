@@ -5,12 +5,13 @@ import { createExpenses } from "../../services/expenses/createExpenses";
 import { getExpenses } from "../../services/expenses/getExpenses";
 import { updateExpenses } from "../../services/expenses/updateExpenses";
 import { deleteExpenses } from "../../services/expenses/deleteExpenses";
+import { getUserId } from "../../utils/getUserId";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent) => {
     try {
       const eventMethod = event.httpMethod;
-      const userId = event.pathParameters?.userId;
+      const userId = getUserId(event);
       const budgetId = event.pathParameters?.budgetId;
       const expenseId = event.pathParameters?.expenseId;
 
