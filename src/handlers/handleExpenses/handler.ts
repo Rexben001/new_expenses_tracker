@@ -12,7 +12,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
     try {
       const eventMethod = event.httpMethod;
       const userId = getUserId(event);
-      const budgetId = event.pathParameters?.budgetId;
+      const budgetId = event.queryStringParameters?.budgetId;
       const expenseId = event.pathParameters?.expenseId;
 
       if (!userId) {
