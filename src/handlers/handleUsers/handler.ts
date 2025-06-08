@@ -10,11 +10,12 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         const userId = event.request.userAttributes.sub;
         const email = event.request.userAttributes.email;
 
-        return await createUser({
+        await createUser({
           dbService,
           userId,
           email,
         });
+        return event;
       }
       return {
         statusCode: 400,
