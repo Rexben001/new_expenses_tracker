@@ -38,6 +38,10 @@ export class ExpensesBeStack extends cdk.Stack {
       {
         userPool,
         generateSecret: false,
+        authFlows: {
+          userPassword: true,
+          custom: true,
+        },
       }
     );
 
@@ -104,3 +108,14 @@ export class ExpensesBeStack extends cdk.Stack {
     });
   }
 }
+
+aws cognito-idp sign-up --client-id 5tfoj71elmv9544ij8ui4mn7s8 --username rexben.rb@gmail.com --password "NewP123!" --user-attributes Name=email,Value=rexben.rb@gmail.com
+
+aws cognito-idp admin-confirm-sign-up \
+  --user-pool-id eu-west-1_0ScZNw6j3 \
+  --username rexben.rb@gmail.com
+
+  aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH \
+  --client-id 5tfoj71elmv9544ij8ui4mn7s8 \
+  --auth-parameters USERNAME=rexben.rb@gmail.com,PASSWORD=NewP123  !
