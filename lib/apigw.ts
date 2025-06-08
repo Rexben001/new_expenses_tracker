@@ -57,11 +57,13 @@ const handleBudgetsRoutes = (
   // GET /budgets/{userId}
   handleBudgets.addMethod("GET", integration);
 
+  const handleBudgetsWithId = handleBudgets.addResource("{budgetId}");
+
   // GET /budgets/{userId}/{budgetId}
-  handleBudgets.addResource("{budgetId}").addMethod("GET", integration);
+  handleBudgetsWithId.addMethod("GET", integration);
 
   // PUT /budgets/{userId}/{budgetId}
-  handleBudgets.addResource("{budgetId}").addMethod("PUT", integration);
+  handleBudgetsWithId.addMethod("PUT", integration);
   // DELETE /budgets/{userId}/{budgetId}
-  handleBudgets.addResource("{budgetId}").addMethod("DELETE", integration);
+  handleBudgetsWithId.addMethod("DELETE", integration);
 };
