@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { BudgetRequest, BudgetRequestSchema } from "../../domain/models/budget";
 import { HttpError } from "../../utils/http-error";
 import { DbService } from "../dbService";
+import { formatDbItem } from "../../utils/format-item";
 
 export const createBudget = async ({
   dbService,
@@ -32,7 +33,10 @@ export const createBudget = async ({
   await dbService.putItem(item);
   return {
     statusCode: 201,
-    body: JSON.stringify({ message: "Budget created successfully", item }),
+    body: JSON.stringify({
+      message: "Budget created successfully",
+      item: formatDbItem(item),
+    }),
   };
 };
 

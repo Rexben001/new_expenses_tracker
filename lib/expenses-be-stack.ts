@@ -16,14 +16,12 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
-    // Create a DynamoDB table
     const table = new dynamodb.Table(this, "BudgetAppTable", {
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    // Create a NodejsFunction
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleExpenses/index.ts"),

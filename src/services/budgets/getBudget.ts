@@ -1,3 +1,4 @@
+import { formatDbItem } from "../../utils/format-item";
 import { DbService } from "../dbService";
 
 export const getBudget = async ({
@@ -30,14 +31,7 @@ export const getBudget = async ({
     };
   }
 
-  const budget = items.map((item) => ({
-    id: item.id,
-    title: item.title,
-    amount: item.amount,
-    currency: item.currency,
-    updatedAt: item.updatedAt,
-    userId: item.userId,
-  }));
+  const budget = items.map(formatDbItem);
 
   return {
     statusCode: 200,

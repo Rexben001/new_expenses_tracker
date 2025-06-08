@@ -5,6 +5,7 @@ import {
   ExpenseRequest,
   ExpenseRequestSchema,
 } from "../../domain/models/expense";
+import { formatDbItem } from "../../utils/format-item";
 
 export const createExpenses = async ({
   dbService,
@@ -36,7 +37,10 @@ export const createExpenses = async ({
   await dbService.putItem(item);
   return {
     statusCode: 201,
-    body: JSON.stringify({ message: "Expense created successfully", item }),
+    body: JSON.stringify({
+      message: "Expense created successfully",
+      item: formatDbItem(item),
+    }),
   };
 };
 

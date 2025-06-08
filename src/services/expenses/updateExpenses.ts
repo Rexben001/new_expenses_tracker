@@ -1,3 +1,4 @@
+import { formatDbItem } from "../../utils/format-item";
 import { DbService } from "../dbService";
 
 export const updateExpenses = async ({
@@ -36,14 +37,6 @@ export const updateExpenses = async ({
     {}
   );
 
-  console.log({
-    pk,
-    sk,
-    updateExpression,
-    expressionAttributeNames,
-    expressionAttributeValues,
-  });
-
   const item = await dbService.updateItem(
     { PK: pk, SK: sk },
     `SET ${updateExpression}`,
@@ -53,7 +46,10 @@ export const updateExpenses = async ({
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ message: "Expense updated successfully", item }),
+    body: JSON.stringify({
+      message: "Expense updated successfully",
+      item: formatDbItem(item),
+    }),
   };
 };
 
