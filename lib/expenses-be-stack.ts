@@ -6,7 +6,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 
 import { handleRoutes } from "./apigw";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, BillingMode, ProjectionType, Table } from "aws-cdk-lib/aws-dynamodb";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -25,8 +25,10 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     table.addGlobalSecondaryIndex({
-      indexName: "CategoryIndex",
-      partitionKey: { name: "category", type: AttributeType.STRING },
+      indexName: "UserCategoryIndex",
+      partitionKey: { name: "gsiPk", type: AttributeType.STRING },
+      sortKey: { name: "gsiSk", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
     });
 
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {

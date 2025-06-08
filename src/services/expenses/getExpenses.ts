@@ -14,64 +14,68 @@ export const getExpenses = async ({
   budgetId?: string;
   category?: string;
 }) => {
-  const keyConditionExpression = getKeyConditionExpression(
-    budgetId,
-    expenseId,
-    category
-  );
+  if (!expenseId && category) {
+    const indexName = "UserCategoryIndex";
+
+    const items = await dbService.queryItems(
+      "gsiPk = :user AND begins_with(gsiSk, :category)",
+      {
+        ":user": { S: `USER#${userId}` },
+        ":category": { S: `CATEGORY#${category}` },
+      },
+      indexName
+    );
+    return formatResponse(items);
+  }
+  const keyConditionExpression = getKeyConditionExpression(budgetId, expenseId);
 
   const expressionAttributeValues = getExpressionAttributeValues(
     userId,
     budgetId,
-    expenseId,
-    category
-  );
-  const gsiFields = category
-    ? {
-        indexName: "CategoryIndex",
-        expressionAttributeNames: { "#category": "category" },
-      }
-    : undefined;
-  const items = await dbService.queryItems(
-    keyConditionExpression,
-    expressionAttributeValues,
-    gsiFields
+    expenseId
   );
 
+  const items = await dbService.queryItems(
+    keyConditionExpression,
+    expressionAttributeValues
+  );
+
+  return formatResponse(items);
+};
+
+const formatResponse = (items: Record<string, any>[]) => {
   if (items.length === 0) {
     return {
       statusCode: 404,
-      body: JSON.stringify({ message: "No expenses found" }),
+      body: JSON.stringify({ message: "Budget not found" }),
     };
   }
 
-  // Map items to the expected format
   const expenses = items.map(formatDbItem);
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ expenses }),
+    body: JSON.stringify({
+      expenses,
+    }),
   };
 };
 
 const getExpressionAttributeValues = (
   userId: string,
   budgetId?: string,
-  expenseId?: string,
-  category?: string
+  expenseId?: string
 ): Record<string, any> => {
   if (budgetId && expenseId)
     return {
       ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
       ":sk": { S: `EXPENSE#${expenseId}` },
-      ...(category && { ":category": { S: category } }),
     };
 
   if (budgetId) {
     return {
       ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
       ":skPrefix": { S: "EXPENSE#" },
-      ...(category && { ":category": { S: category } }),
     };
   }
 
@@ -79,31 +83,26 @@ const getExpressionAttributeValues = (
     return {
       ":pk": { S: `USER#${userId}` },
       ":sk": { S: `EXPENSE#${expenseId}` },
-      ...(category && { ":category": { S: category } }),
     };
   }
 
   return {
     ":pk": { S: `USER#${userId}` },
     ":skPrefix": { S: "EXPENSE#" },
-    ...(category && { ":category": { S: category } }),
   };
 };
 
 const getKeyConditionExpression = (
   budgetId?: string,
-  expenseId?: string,
-  category?: string
+  expenseId?: string
 ): string => {
-  const categoryCondition = category ? " AND #category = :category" : "";
-
   if (expenseId) {
-    return "PK = :pk AND SK = :sk" + categoryCondition;
+    return "PK = :pk AND SK = :sk";
   }
 
   if (budgetId) {
-    return "PK = :pk AND begins_with(SK, :skPrefix)" + categoryCondition;
+    return "PK = :pk AND begins_with(SK, :skPrefix)";
   }
 
-  return "PK = :pk AND begins_with(SK, :skPrefix)" + categoryCondition;
+  return "PK = :pk AND begins_with(SK, :skPrefix)";
 };

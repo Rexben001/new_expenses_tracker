@@ -12,27 +12,35 @@ export const getBudget = async ({
   budgetId?: string;
   category?: string;
 }) => {
-  const keyConditionExpression = getKeyConditionExpression(budgetId, category);
+  if (!budgetId && category) {
+    const indexName = "UserCategoryIndex";
+
+    const items = await dbService.queryItems(
+      "gsiPk = :user AND begins_with(gsiSk, :category)",
+      {
+        ":pk": { S: `USER#${userId}` },
+        ":category": { S: `CATEGORY#${category}` },
+      },
+      indexName
+    );
+    return formatResponse(items);
+  }
+  const keyConditionExpression = getKeyConditionExpression(budgetId);
 
   const expressionAttributeValues = getExpressionAttributeValues(
     userId,
-    budgetId,
-    category
+    budgetId
   );
-
-  const gsiFields = category
-    ? {
-        indexName: "CategoryIndex",
-        expressionAttributeNames: { "#category": "category" },
-      }
-    : undefined;
 
   const items = await dbService.queryItems(
     keyConditionExpression,
-    expressionAttributeValues,
-    gsiFields
+    expressionAttributeValues
   );
 
+  return formatResponse(items);
+};
+
+const formatResponse = (items: Record<string, any>[]) => {
   if (items.length === 0) {
     return {
       statusCode: 404,
@@ -50,32 +58,25 @@ export const getBudget = async ({
   };
 };
 
-const getKeyConditionExpression = (
-  budgetId?: string,
-  category?: string
-): string => {
-  const categoryCondition = category ? " AND #category = :category" : "";
+const getKeyConditionExpression = (budgetId?: string): string => {
   if (budgetId) {
-    return "PK = :pk AND SK = :sk" + categoryCondition;
+    return "PK = :pk AND SK = :sk";
   }
-  return "PK = :pk AND begins_with(SK, :skPrefix)" + categoryCondition;
+  return "PK = :pk AND begins_with(SK, :skPrefix)";
 };
 
 const getExpressionAttributeValues = (
   userId: string,
-  budgetId?: string,
-  category?: string
+  budgetId?: string
 ): Record<string, any> => {
   if (budgetId)
     return {
       ":pk": { S: `USER#${userId}` },
       ":sk": { S: `BUDGET#${budgetId}` },
-      ...(category && { ":category": { S: category } }),
     };
 
   return {
     ":pk": { S: `USER#${userId}` },
     ":skPrefix": { S: "BUDGET#" },
-    ...(category && { ":category": { S: category } }),
   };
 };

@@ -27,10 +27,14 @@ export const createExpenses = async ({
 
   const category = parsedBody.category || "Others"; // Default category if not provided
 
+  const gsiSk = `CATEGORY#${category}`;
+
   const item = {
     ...parsedBody,
     PK: pk,
     SK: sk,
+    gsiPk: pk,
+    gsiSk,
     userId,
     id: expenseId,
     category,
