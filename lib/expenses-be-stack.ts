@@ -38,6 +38,10 @@ export class ExpensesBeStack extends cdk.Stack {
       {
         userPool,
         generateSecret: false,
+        authFlows: {
+          userPassword: true,
+          custom: true,
+        },
       }
     );
 
