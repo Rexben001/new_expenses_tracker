@@ -22,7 +22,8 @@ export const getBudget = async ({
 
   const items = await dbService.queryItems(
     keyConditionExpression,
-    expressionAttributeValues
+    expressionAttributeValues,
+    category && "CategoryIndex"
   );
 
   if (items.length === 0) {
