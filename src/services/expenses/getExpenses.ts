@@ -25,6 +25,13 @@ export const getExpenses = async ({
     expressionAttributeValues
   );
 
+  if (items.length === 0) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ message: "No expenses found" }),
+    };
+  }
+
   // Map items to the expected format
   const expenses = items.map(formatDbItem);
 
