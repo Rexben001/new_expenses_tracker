@@ -27,9 +27,11 @@ export const getExpenses = async ({
     category
   );
   const gsiFields = category
-    ? { indexName: "CategoryIndex", "#category": "category" }
+    ? {
+        indexName: "CategoryIndex",
+        expressionAttributeNames: { "#category": "category" },
+      }
     : undefined;
-
   const items = await dbService.queryItems(
     keyConditionExpression,
     expressionAttributeValues,
