@@ -8,13 +8,17 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
+type gsiFields = {
+  indexName?: string;
+  expressionAttributeNames?: Record<string, string>;
+};
 export interface DbService {
   getItem(key: Record<string, any>): Promise<Record<string, any>>;
   putItem(item: Record<string, any>): Promise<void>;
   queryItems(
     keyConditionExpression: string,
     expressionAttributeValues: Record<string, any>,
-    indexName?: string
+    gsiFields?: gsiFields
   ): Promise<Record<string, any>[]>;
   updateItem(
     key: Record<string, any>,
@@ -59,11 +63,14 @@ export function makeDbService(
     async queryItems(
       keyConditionExpression: string,
       expressionAttributeValues: Record<string, any>,
-      indexName: string
+      gsiFields?: gsiFields
     ) {
       const command = new QueryCommand({
         TableName: tableName,
-        ...(indexName && { IndexName: indexName }),
+        ...(gsiFields && {
+          IndexName: gsiFields.indexName,
+          ExpressionAttributeNames: gsiFields.expressionAttributeNames,
+        }),
         KeyConditionExpression: keyConditionExpression,
         ExpressionAttributeValues: expressionAttributeValues,
       });

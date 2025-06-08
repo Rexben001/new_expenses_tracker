@@ -20,10 +20,14 @@ export const getBudget = async ({
     category
   );
 
+  const gsiFields = category
+    ? { indexName: "CategoryIndex", "#category": "category" }
+    : undefined;
+
   const items = await dbService.queryItems(
     keyConditionExpression,
     expressionAttributeValues,
-    category && "CategoryIndex"
+    gsiFields
   );
 
   if (items.length === 0) {
