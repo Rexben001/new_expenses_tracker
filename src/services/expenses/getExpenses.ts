@@ -15,6 +15,7 @@ export const getExpenses = async ({
   category?: string;
 }) => {
   if (!expenseId && category) {
+    console.log("got here");
     const indexName = "UserCategoryIndex";
 
     const items = await dbService.queryItems(

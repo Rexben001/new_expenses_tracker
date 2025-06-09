@@ -61,6 +61,12 @@ export function makeDbService(
       expressionAttributeValues: Record<string, any>,
       indexName?: string
     ) {
+      console.log({
+        keyConditionExpression,
+        expressionAttributeValues,
+        indexName,
+        tableName,
+      });
       const command = new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: keyConditionExpression,
