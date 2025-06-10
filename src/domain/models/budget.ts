@@ -27,6 +27,8 @@ export const BudgetRequestSchema = z.object({
   }),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid().optional(),
-  category: z.string().optional(), // Optional category field
+  category: z.string().optional(),
+  updatedAt: z.string().optional(),
+  // Optional category field
 });
 export type BudgetRequest = z.infer<typeof BudgetRequestSchema>;

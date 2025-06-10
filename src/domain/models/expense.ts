@@ -22,5 +22,6 @@ export const ExpenseRequestSchema = z.object({
   description: z.string().optional(),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid().optional(),
+  updatedAt: z.string().optional(),
 });
 export type ExpenseRequest = z.infer<typeof ExpenseRequestSchema>;

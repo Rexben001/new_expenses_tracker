@@ -35,7 +35,7 @@ export const createBudget = async ({
     userId,
     id: budgetId,
     category,
-    updatedAt: new Date().toISOString(),
+    updatedAt: parsedBody.updatedAt || new Date().toISOString(),
   };
 
   await dbService.putItem(item);
