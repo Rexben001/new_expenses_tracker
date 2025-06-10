@@ -1,4 +1,5 @@
 import { formatDbItem } from "../../utils/format-item";
+import { errorResponse, successResponse } from "../../utils/response";
 import { DbService } from "../dbService";
 
 export const getExpenses = async ({
@@ -22,7 +23,7 @@ export const getExpenses = async ({
       "gsiPk = :user AND begins_with(gsiSk, :category)",
       {
         ":user": { S: `USER#${userId}` },
-        ":category": { S: `CATEGORY#${category}` },
+        ":category": { S: `CATEGORY#${category.toLocaleLowerCase()}` },
       },
       indexName
     );
@@ -46,20 +47,12 @@ export const getExpenses = async ({
 
 const formatResponse = (items: Record<string, any>[]) => {
   if (items.length === 0) {
-    return {
-      statusCode: 404,
-      body: JSON.stringify({ message: "Budget not found" }),
-    };
+    return errorResponse("No expenses found for the given criteria", 404);
   }
 
   const expenses = items.map(formatDbItem);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      expenses,
-    }),
-  };
+  return successResponse(expenses);
 };
 
 const getExpressionAttributeValues = (

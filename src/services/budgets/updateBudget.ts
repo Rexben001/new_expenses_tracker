@@ -1,4 +1,5 @@
 import { formatDbItem } from "../../utils/format-item";
+import { successResponse } from "../../utils/response";
 import { DbService } from "../dbService";
 
 export const updateBudgets = async ({
@@ -42,13 +43,10 @@ export const updateBudgets = async ({
     expressionAttributeValues
   );
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      message: "Budget updated successfully",
-      item: formatDbItem(item),
-    }),
-  };
+  return successResponse({
+    message: "Budget updated successfully",
+    item: formatDbItem(item),
+  });
 };
 
 function parseEventBody(body: string) {

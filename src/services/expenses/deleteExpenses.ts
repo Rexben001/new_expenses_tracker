@@ -1,3 +1,4 @@
+import { successResponse } from "../../utils/response";
 import { DbService } from "../dbService";
 
 export const deleteExpenses = async ({
@@ -25,8 +26,5 @@ export const deleteExpenses = async ({
     SK: sk,
   });
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Expense deleted successfully" }),
-  };
+  return successResponse({ message: "Expense deleted successfully" });
 };

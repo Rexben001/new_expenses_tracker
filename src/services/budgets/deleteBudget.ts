@@ -1,3 +1,4 @@
+import { successResponse } from "../../utils/response";
 import { DbService } from "../dbService";
 
 export const deleteBudget = async ({
@@ -26,10 +27,9 @@ export const deleteBudget = async ({
   });
 
   // Optionally, delete associated expenses if needed
-//   await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}#EXPENSE#`);
+  //   await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}#EXPENSE#`);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Budget deleted successfully" }),
-  };
+  return successResponse({
+    message: "Budget deleted successfully",
+  });
 };

@@ -3,6 +3,7 @@ import { BudgetRequest, BudgetRequestSchema } from "../../domain/models/budget";
 import { HttpError } from "../../utils/http-error";
 import { DbService } from "../dbService";
 import { formatDbItem } from "../../utils/format-item";
+import { successResponse } from "../../utils/response";
 
 export const createBudget = async ({
   dbService,
@@ -23,7 +24,7 @@ export const createBudget = async ({
 
   const category = parsedBody.category || "Others"; // Default category if not provided
 
-  const gsiSk = `CATEGORY#${category}`;
+  const gsiSk = `CATEGORY#${category.toLocaleLowerCase()}`;
 
   const item = {
     ...parsedBody,
@@ -38,13 +39,14 @@ export const createBudget = async ({
   };
 
   await dbService.putItem(item);
-  return {
-    statusCode: 201,
-    body: JSON.stringify({
+
+  return successResponse(
+    {
       message: "Budget created successfully",
       item: formatDbItem(item),
-    }),
-  };
+    },
+    201
+  );
 };
 
 const parseEventBody = (body: string): BudgetRequest => {

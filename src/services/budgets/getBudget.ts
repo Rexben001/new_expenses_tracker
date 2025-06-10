@@ -1,4 +1,5 @@
 import { formatDbItem } from "../../utils/format-item";
+import { successResponse } from "../../utils/response";
 import { DbService } from "../dbService";
 
 export const getBudget = async ({
@@ -19,7 +20,7 @@ export const getBudget = async ({
       "gsiPk = :user AND begins_with(gsiSk, :category)",
       {
         ":pk": { S: `USER#${userId}` },
-        ":category": { S: `CATEGORY#${category}` },
+        ":category": { S: `CATEGORY#${category.toLocaleLowerCase()}` },
       },
       indexName
     );
@@ -50,12 +51,7 @@ const formatResponse = (items: Record<string, any>[]) => {
 
   const budget = items.map(formatDbItem);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      budget,
-    }),
-  };
+  return successResponse(budget);
 };
 
 const getKeyConditionExpression = (budgetId?: string): string => {

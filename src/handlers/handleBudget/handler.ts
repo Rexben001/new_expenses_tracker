@@ -6,6 +6,7 @@ import { getBudget } from "../../services/budgets/getBudget";
 import { updateBudgets } from "../../services/budgets/updateBudget";
 import { deleteBudget } from "../../services/budgets/deleteBudget";
 import { getUserId } from "../../utils/getUserId";
+import { errorResponse } from "../../utils/response";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent) => {
@@ -56,10 +57,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       }
     } catch (error) {
       console.error("Error handling budget:", error);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ message: "Internal server error" }),
-      };
+      return errorResponse();
     }
   };
 };

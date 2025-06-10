@@ -6,6 +6,7 @@ import {
   ExpenseRequestSchema,
 } from "../../domain/models/expense";
 import { formatDbItem } from "../../utils/format-item";
+import { successResponse } from "../../utils/response";
 
 export const createExpenses = async ({
   dbService,
@@ -27,7 +28,7 @@ export const createExpenses = async ({
 
   const category = parsedBody.category || "Others"; // Default category if not provided
 
-  const gsiSk = `CATEGORY#${category}`;
+  const gsiSk = `CATEGORY#${category.toLocaleLowerCase()}`;
 
   const item = {
     ...parsedBody,
@@ -42,13 +43,13 @@ export const createExpenses = async ({
   };
 
   await dbService.putItem(item);
-  return {
-    statusCode: 201,
-    body: JSON.stringify({
+  return successResponse(
+    {
       message: "Expense created successfully",
       item: formatDbItem(item),
-    }),
-  };
+    },
+    201
+  );
 };
 
 const parseEventBody = (body: string): ExpenseRequest => {

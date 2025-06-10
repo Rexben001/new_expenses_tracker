@@ -6,7 +6,12 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 
 import { handleRoutes } from "./apigw";
-import { AttributeType, BillingMode, ProjectionType, Table } from "aws-cdk-lib/aws-dynamodb";
+import {
+  AttributeType,
+  BillingMode,
+  ProjectionType,
+  Table,
+} from "aws-cdk-lib/aws-dynamodb";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,6 +29,7 @@ export class ExpensesBeStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
+    // Create a Global Secondary Index for user and category
     table.addGlobalSecondaryIndex({
       indexName: "UserCategoryIndex",
       partitionKey: { name: "gsiPk", type: AttributeType.STRING },

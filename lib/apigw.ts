@@ -1,6 +1,14 @@
 import { aws_apigateway } from "aws-cdk-lib";
 import { MethodOptions } from "aws-cdk-lib/aws-apigateway";
 
+const addCorsPreflight = (resource: aws_apigateway.Resource) => {
+  resource.addCorsPreflight({
+    allowOrigins: ["*"], // or your frontend URL e.g. ['https://myapp.com']
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+  });
+};
+
 export const handleRoutes = (
   api: aws_apigateway.RestApi,
   authorizer: aws_apigateway.CognitoUserPoolsAuthorizer,
@@ -43,6 +51,8 @@ const handleExpensesRoutes = ({
 }) => {
   const handleExpenses = api.root.addResource("expenses");
 
+  addCorsPreflight(handleExpenses);
+
   const additionaLMethodOptions: MethodOptions = {
     ...authorizerParams,
     requestParameters: {
@@ -56,6 +66,8 @@ const handleExpensesRoutes = ({
 
   // GET /expenses/{expenseId} route
   const withExpenseId = handleExpenses.addResource("{expenseId}");
+
+  addCorsPreflight(withExpenseId);
 
   withExpenseId.addMethod("GET", integration, additionaLMethodOptions);
   // PUT /expenses/{expenseId} route
@@ -74,8 +86,11 @@ const handleBudgetsRoutes = ({
   integration: aws_apigateway.LambdaIntegration;
 }) => {
   const budgetRootResource = api.root.addResource("budgets");
+  addCorsPreflight(budgetRootResource);
 
   const budgetIdResource = budgetRootResource.addResource("{budgetId}");
+
+  addCorsPreflight(budgetIdResource);
 
   // POST /budgets
   budgetRootResource.addMethod("POST", integration, authorizerParams);
@@ -102,8 +117,10 @@ const handleUsersRoutes = ({
   integration: aws_apigateway.LambdaIntegration;
 }) => {
   const users = api.root.addResource("users");
+  addCorsPreflight(users);
 
   // GET /users/{userId}
   const userIdResource = users.addResource("{userId}");
+  addCorsPreflight(userIdResource);
   userIdResource.addMethod("GET", integration, authorizerParams);
 };
