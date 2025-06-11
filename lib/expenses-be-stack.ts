@@ -132,6 +132,34 @@ export class ExpensesBeStack extends cdk.Stack {
       handleUsersLambda
     );
 
+    new apigateway.GatewayResponse(this, "UnauthorizedResponse", {
+      restApi: api,
+      type: apigateway.ResponseType.UNAUTHORIZED, // 401
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'", // or your frontend domain
+        "Access-Control-Allow-Headers": "'*'",
+        "Access-Control-Allow-Methods": "'*'",
+      },
+      statusCode: "401",
+      templates: {
+        "application/json": JSON.stringify({ message: "Unauthorized" }),
+      },
+    });
+
+    new apigateway.GatewayResponse(this, "AccessDeniedResponse", {
+      restApi: api,
+      type: apigateway.ResponseType.ACCESS_DENIED, // 403
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Headers": "'*'",
+        "Access-Control-Allow-Methods": "'*'",
+      },
+      statusCode: "403",
+      templates: {
+        "application/json": JSON.stringify({ message: "Access denied" }),
+      },
+    });
+
     handleRoutes(api, authorizer, {
       expensesIntegration,
       budgetsIntegration,
