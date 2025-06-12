@@ -19,6 +19,6 @@ export const errorResponse = (
   return {
     statusCode,
     headers,
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, statusCode }),
   };
 };
