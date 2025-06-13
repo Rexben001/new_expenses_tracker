@@ -49,7 +49,7 @@ export function makeDbService(
     async putItem(item: Record<string, any>) {
       const command = new PutItemCommand({
         TableName: tableName,
-        Item: marshall(item),
+        Item: marshall(item, { removeUndefinedValues: true }),
         ConditionExpression:
           "attribute_not_exists(PK) AND attribute_not_exists(SK)", // optional safety
       });
@@ -66,7 +66,6 @@ export function makeDbService(
         KeyConditionExpression: keyConditionExpression,
         ExpressionAttributeValues: expressionAttributeValues,
         ...(indexName && { IndexName: indexName }),
-        
       });
       const response = await client.send(command);
 
@@ -84,9 +83,11 @@ export function makeDbService(
     ) {
       const command = new UpdateItemCommand({
         TableName: tableName,
-        Key: marshall(key),
+        Key: marshall(key, { removeUndefinedValues: true }),
         UpdateExpression: updateExpression,
-        ExpressionAttributeValues: marshall(expressionAttributeValues),
+        ExpressionAttributeValues: marshall(expressionAttributeValues, {
+          removeUndefinedValues: true,
+        }),
         ExpressionAttributeNames: expressionAttributeNames,
         ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)", // optional safety
         ReturnValues: "ALL_NEW",
@@ -98,7 +99,7 @@ export function makeDbService(
     async deleteItem(key: Record<string, any>) {
       const command = new DeleteItemCommand({
         TableName: tableName,
-        Key: marshall(key),
+        Key: marshall(key, { removeUndefinedValues: true }),
         ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)", // optional safety
       });
       await client.send(command);

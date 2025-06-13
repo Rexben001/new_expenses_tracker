@@ -119,8 +119,6 @@ const handleUsersRoutes = ({
   const users = api.root.addResource("users");
   addCorsPreflight(users);
 
-  // GET /users/{userId}
-  const userIdResource = users.addResource("{userId}");
-  addCorsPreflight(userIdResource);
-  userIdResource.addMethod("GET", integration, authorizerParams);
+  users.addMethod("GET", integration, authorizerParams);
+  users.addMethod("PUT", integration, authorizerParams);
 };

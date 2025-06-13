@@ -1,6 +1,9 @@
 import { APIGatewayEvent, PostConfirmationTriggerEvent } from "aws-lambda";
 import { DbService } from "../../services/dbService";
 import { createUser } from "../../services/users/createUser";
+import { getUser } from "../../services/users/getUser";
+import { getUserId } from "../../utils/getUserId";
+import { HttpError } from "../../utils/http-error";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: PostConfirmationTriggerEvent | APIGatewayEvent) => {
@@ -16,13 +19,27 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
           email,
         });
         return event;
+      } else {
+        const eventMethod = event.httpMethod;
+        const userId = getUserId(event);
+
+        switch (eventMethod) {
+          case "GET":
+            return getUser({ dbService, userId });
+
+          default:
+            throw new HttpError("Method not allowed", 405, {
+              cause: new Error(`Method ${eventMethod} is not allowed`),
+            });
+        }
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            message:
+              "Invalid event type. Expected PostConfirmationTriggerEvent.",
+          }),
+        };
       }
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          message: "Invalid event type. Expected PostConfirmationTriggerEvent.",
-        }),
-      };
     } catch (error) {
       console.error("Error in handler:", error);
       return {
