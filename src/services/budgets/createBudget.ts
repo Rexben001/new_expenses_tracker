@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { BudgetRequest, BudgetRequestSchema } from "../../domain/models/budget";
 import { HttpError } from "../../utils/http-error";
-import { DbService } from "../dbService";
+import { DbService } from "../shared/dbService";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 

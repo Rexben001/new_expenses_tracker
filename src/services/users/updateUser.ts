@@ -1,6 +1,6 @@
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
-import { DbService } from "../dbService";
+import { DbService } from "../shared/dbService";
 
 export const updateUser = async ({
   dbService,
@@ -12,7 +12,7 @@ export const updateUser = async ({
   userId: string;
 }) => {
   if (!userId) {
-    throw new Error("User ID is required for updating an expense");
+    throw new Error("User ID is required for updating an user");
   }
 
   const parsedBody = parseEventBody(body ?? "");
@@ -42,7 +42,7 @@ export const updateUser = async ({
   );
 
   return successResponse({
-    message: "Expense updated successfully",
+    message: "User updated successfully",
     item: formatDbItem(item),
   });
 };

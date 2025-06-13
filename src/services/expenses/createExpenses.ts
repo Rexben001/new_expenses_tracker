@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { HttpError } from "../../utils/http-error";
-import { DbService } from "../dbService";
+import { DbService } from "../shared/dbService";
 import {
   ExpenseRequest,
   ExpenseRequestSchema,

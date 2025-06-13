@@ -1,9 +1,10 @@
 import { APIGatewayEvent, PostConfirmationTriggerEvent } from "aws-lambda";
-import { DbService } from "../../services/dbService";
+import { DbService } from "../../services/shared/dbService";
 import { createUser } from "../../services/users/createUser";
 import { getUser } from "../../services/users/getUser";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
+import { updateUser } from "../../services/users/updateUser";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: PostConfirmationTriggerEvent | APIGatewayEvent) => {
@@ -27,18 +28,18 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
           case "GET":
             return getUser({ dbService, userId });
 
+          case "PUT":
+            return updateUser({
+              dbService,
+              body: event.body ?? "",
+              userId,
+            });
+
           default:
             throw new HttpError("Method not allowed", 405, {
               cause: new Error(`Method ${eventMethod} is not allowed`),
             });
         }
-        return {
-          statusCode: 400,
-          body: JSON.stringify({
-            message:
-              "Invalid event type. Expected PostConfirmationTriggerEvent.",
-          }),
-        };
       }
     } catch (error) {
       console.error("Error in handler:", error);

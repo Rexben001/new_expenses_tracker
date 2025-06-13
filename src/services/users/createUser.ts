@@ -1,4 +1,4 @@
-import { DbService } from "../dbService";
+import { DbService } from "../shared/dbService";
 
 export const createUser = async ({
   dbService,

@@ -1,5 +1,5 @@
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { DocumentClient } from "../utils/dynamodb";
+import { DocumentClient } from "../../utils/dynamodb";
 import {
   DeleteItemCommand,
   PutItemCommand,

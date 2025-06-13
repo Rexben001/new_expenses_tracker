@@ -1,5 +1,5 @@
 import type { APIGatewayEvent } from "aws-lambda";
-import { DbService } from "../../services/dbService";
+import { DbService } from "../../services/shared/dbService";
 import { HttpError } from "../../utils/http-error";
 import { createBudget } from "../../services/budgets/createBudget";
 import { getBudget } from "../../services/budgets/getBudget";

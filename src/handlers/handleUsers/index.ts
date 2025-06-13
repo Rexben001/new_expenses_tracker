@@ -1,5 +1,5 @@
 import { makeHandler } from "./handler";
-import { makeDbService } from "../../services/dbService";
+import { makeDbService } from "../../services/shared/dbService";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { makeDocumentClient } from "../../utils/dynamodb";
 

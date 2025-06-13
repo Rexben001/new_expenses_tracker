@@ -1,5 +1,5 @@
 import { successResponse } from "../../utils/response";
-import { DbService } from "../dbService";
+import { DbService } from "../shared/dbService";
 
 export const deleteExpenses = async ({
   dbService,

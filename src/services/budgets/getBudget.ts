@@ -1,6 +1,6 @@
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
-import { DbService } from "../dbService";
+import { DbService } from "../shared/dbService";
 
 export const getBudget = async ({
   dbService,
