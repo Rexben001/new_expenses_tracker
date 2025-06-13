@@ -14,6 +14,8 @@ export const getUser = async ({
     SK: `PROFILE#${userId}`,
   });
 
+  console.log({ users });
+
   if (!users.length) return errorResponse("User not found", 404);
 
   const user = formatDbItem(users[0]);
