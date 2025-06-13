@@ -10,8 +10,8 @@ export const getUser = async ({
   userId: string;
 }) => {
   const users = await dbService.queryItems("PK = :pk AND SK = :sk", {
-    PK: `USER#${userId}`,
-    SK: `PROFILE#${userId}`,
+    pk: { S: `USER#${userId}` },
+    sk: { S: `PROFILE#${userId}` },
   });
 
   console.log({ users });
