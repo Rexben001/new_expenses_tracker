@@ -17,10 +17,10 @@ export const getExpenses = async ({
     const indexName = "UserExpensesIndex";
 
     const items = await dbService.queryItems(
-      "gsiPK = :gsiPK AND begins_with(gsiSk, :skPrefix)",
+      "gsiPk = :user AND begins_with(gsiSk, :prefix)",
       {
-        ":gsiPK": { S: `USER#${userId}` },
-        ":skPrefix": { S: "EXPENSE#" },
+        ":user": { S: `USER#${userId}` },
+        ":prefix": { S: "EXPENSE#" },
       },
       indexName
     );
