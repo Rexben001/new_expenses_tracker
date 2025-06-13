@@ -29,13 +29,12 @@ export class ExpensesBeStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    // Create a Global Secondary Index for user and category
-    // table.addGlobalSecondaryIndex({
-    //   indexName: "UserCategoryIndex",
-    //   partitionKey: { name: "gsiPk", type: AttributeType.STRING },
-    //   sortKey: { name: "gsiSk", type: AttributeType.STRING },
-    //   projectionType: ProjectionType.ALL,
-    // });
+    table.addGlobalSecondaryIndex({
+      indexName: "UserExpensesIndex",
+      partitionKey: { name: "gsiPk", type: AttributeType.STRING },
+      sortKey: { name: "gsiSk", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
 
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,

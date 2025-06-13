@@ -7,25 +7,24 @@ export const getExpenses = async ({
   userId,
   expenseId,
   budgetId,
-  category,
 }: {
   dbService: DbService;
   userId: string;
   expenseId?: string;
   budgetId?: string;
-  category?: string;
 }) => {
-  if (!expenseId && category) {
-    const indexName = "UserCategoryIndex";
+  if (!expenseId && !budgetId) {
+    const indexName = "UserExpensesIndex";
 
     const items = await dbService.queryItems(
-      "gsiPk = :user AND begins_with(gsiSk, :category)",
+      "gsiPK = :user AND begins_with(SK, :skPrefix)",
       {
-        ":user": { S: `USER#${userId}` },
-        ":category": { S: `CATEGORY#${category.toLocaleLowerCase()}` },
+        ":gsiPK": { S: `USER#${userId}` },
+        ":skPrefix": {S: "EXPENSE#"}
       },
       indexName
     );
+
     return formatResponse(items);
   }
   const keyConditionExpression = getKeyConditionExpression(budgetId, expenseId);

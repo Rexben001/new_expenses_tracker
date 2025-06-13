@@ -23,19 +23,18 @@ export const createExpenses = async ({
 
   const parsedBody = parseEventBody(body ?? "");
 
+  const userPK = `USER#${userId}`;
   const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
   const sk = `EXPENSE#${expenseId}`;
 
   const category = parsedBody.category || "Others"; // Default category if not provided
 
-  const gsiSk = `CATEGORY#${category.toLocaleLowerCase()}`;
-
   const item = {
     ...parsedBody,
     PK: pk,
     SK: sk,
-    gsiPk: pk,
-    gsiSk,
+    gsiPk: userPK,
+    gsiSk: sk,
     userId,
     id: expenseId,
     category,

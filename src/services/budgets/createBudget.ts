@@ -24,14 +24,10 @@ export const createBudget = async ({
 
   const category = parsedBody.category || "Others"; // Default category if not provided
 
-  const gsiSk = `CATEGORY#${category.toLocaleLowerCase()}`;
-
   const item = {
     ...parsedBody,
     PK: pk,
     SK: sk,
-    gsiPk: pk,
-    gsiSk,
     userId,
     id: budgetId,
     category,

@@ -15,7 +15,6 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       const userId = getUserId(event);
       const budgetId = event.pathParameters?.budgetId;
       const body = event.body ?? "";
-      const category = event.queryStringParameters?.category;
 
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
@@ -35,7 +34,6 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             dbService,
             userId,
             budgetId,
-            category,
           });
         case "PUT":
           return await updateBudgets({
