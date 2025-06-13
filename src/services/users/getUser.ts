@@ -16,5 +16,7 @@ export const getUser = async ({
 
   if (!users.length) return errorResponse("User not found", 404);
 
-  return successResponse(formatDbItem(users)[0]);
+  const user = formatDbItem(users[0]);
+
+  return successResponse(user);
 };
