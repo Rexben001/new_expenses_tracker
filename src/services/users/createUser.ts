@@ -22,6 +22,7 @@ export const createUser = async ({
     email,
     updatedAt: new Date().toISOString(),
     userId,
+    currency: "EUR",
   });
 
   return {
