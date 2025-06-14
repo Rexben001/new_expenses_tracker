@@ -1,5 +1,7 @@
+import { Budget } from "../../domain/models/budget";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
+import { sortItemByRecent } from "../../utils/sort-item";
 import { DbService } from "../shared/dbService";
 
 export const getBudget = async ({
@@ -34,9 +36,9 @@ const formatResponse = (items: Record<string, any>[]) => {
     };
   }
 
-  const budget = items.map(formatDbItem);
+  const budgets = items.map(formatDbItem);
 
-  return successResponse(budget);
+  return successResponse(sortItemByRecent(budgets as Budget[]));
 };
 
 const getKeyConditionExpression = (budgetId?: string): string => {

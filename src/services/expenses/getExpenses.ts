@@ -1,5 +1,7 @@
+import { Expense } from "../../domain/models/expense";
 import { formatDbItem } from "../../utils/format-item";
 import { errorResponse, successResponse } from "../../utils/response";
+import { sortItemByRecent } from "../../utils/sort-item";
 import { DbService } from "../shared/dbService";
 
 export const getExpenses = async ({
@@ -50,7 +52,7 @@ const formatResponse = (items: Record<string, any>[]) => {
 
   const expenses = items.map(formatDbItem);
 
-  return successResponse(expenses);
+  return successResponse(sortItemByRecent(expenses as Expense[]));
 };
 
 const getExpressionAttributeValues = (
