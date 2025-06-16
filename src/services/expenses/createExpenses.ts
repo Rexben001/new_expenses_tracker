@@ -39,7 +39,7 @@ export const createExpenses = async ({
     id: expenseId,
     category,
     updatedAt: parsedBody.updatedAt || new Date().toISOString(),
-    budgetId,
+    budgetId: budgetId ?? undefined,
   };
 
   await dbService.putItem(item);
