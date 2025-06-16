@@ -13,19 +13,21 @@ export const createExpenses = async ({
   body,
   userId,
   budgetId,
+  expenseId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
+  expenseId?: string;
 }) => {
-  const expenseId = randomUUID();
+  const _expenseId = expenseId ?? randomUUID();
 
   const parsedBody = parseEventBody(body ?? "");
 
   const userPK = `USER#${userId}`;
   const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
-  const sk = `EXPENSE#${expenseId}`;
+  const sk = `EXPENSE#${_expenseId}`;
 
   const category = parsedBody.category || "Others"; // Default category if not provided
 
@@ -36,7 +38,7 @@ export const createExpenses = async ({
     gsiPk: userPK,
     gsiSk: sk,
     userId,
-    id: expenseId,
+    id: _expenseId,
     category,
     updatedAt: parsedBody.updatedAt || new Date().toISOString(),
     budgetId: budgetId ?? undefined,
