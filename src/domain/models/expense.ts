@@ -18,7 +18,7 @@ export const ExpenseRequestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   amount: z.number().positive("Amount must be a positive number"),
   category: z.string().optional(),
-  budgetId: z.string().uuid().optional().nullable(),
+  budgetId: z.string().optional().nullable(),
   description: z.string().optional(),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid().optional(),
