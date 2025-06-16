@@ -2,6 +2,7 @@ import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
 import { createExpenses } from "./createExpenses";
+import { deleteExpenses } from "./deleteExpenses";
 
 export const updateExpenses = async ({
   dbService,
@@ -54,6 +55,11 @@ export const updateExpenses = async ({
   } catch (err) {
     const error = err as Error;
     if (error.name === "ConditionalCheckFailedException") {
+      await deleteExpenses({
+        dbService,
+        userId,
+        expenseId,
+      });
       return await createExpenses({
         dbService,
         body,
