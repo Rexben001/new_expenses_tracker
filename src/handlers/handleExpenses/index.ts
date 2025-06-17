@@ -6,6 +6,6 @@ import { makeDocumentClient } from "../../utils/dynamodb";
 export const handler = makeHandler({
   dbService: makeDbService(
     makeDocumentClient({ dynamodb: new DynamoDBClient({}) }),
-    process.env.TABLE_NAME ?? "Expenses"
+    process.env.TABLE_NAME!
   ),
 });

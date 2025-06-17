@@ -23,6 +23,7 @@ export interface DbService {
     expressionAttributeValues: Record<string, any>
   ): Promise<Record<string, any>>;
   deleteItem(key: Record<string, any>): Promise<void>;
+  deleteItemsByPrefix(partitionKey: string, prefix: string): Promise<void>;
 }
 
 export function makeDbService(
@@ -105,32 +106,34 @@ export function makeDbService(
       await client.send(command);
     },
 
-    // async deleteItemsByPrefix(
-    //   partitionKey: string,
-    //   prefix: string
-    // ): Promise<void> {
-    //   const command = new QueryCommand({
-    //     TableName: tableName,
-    //     KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
-    //     ExpressionAttributeValues: {
-    //       ":pk": { S: partitionKey },
-    //       ":skPrefix": { S: prefix },
-    //     },
-    //   });
+    // async deleteBatchItem(ke)
 
-    //   const response = await client.send(command);
-    //   const items = response.Items || [];
+    async deleteItemsByPrefix(
+      partitionKey: string,
+      prefix: string
+    ): Promise<void> {
+      const command = new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": { S: partitionKey },
+          ":skPrefix": { S: prefix },
+        },
+      });
 
-    //   for (const item of items) {
-    //     const deleteCommand = new DeleteItemCommand({
-    //       TableName: tableName,
-    //       Key: {
-    //         PK: item.PK,
-    //         SK: item.SK,
-    //       },
-    //     });
-    //     await client.send(deleteCommand);
-    //   }
-    // }
+      const response = await client.send(command);
+      const items = response.Items || [];
+
+      for (const item of items) {
+        const deleteCommand = new DeleteItemCommand({
+          TableName: tableName,
+          Key: {
+            PK: item.PK,
+            SK: item.SK,
+          },
+        });
+        await client.send(deleteCommand);
+      }
+    },
   };
 }

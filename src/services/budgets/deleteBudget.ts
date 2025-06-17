@@ -26,6 +26,8 @@ export const deleteBudget = async ({
     SK: sk,
   });
 
+  await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}`, `EXPENSE#`);
+
   // Optionally, delete associated expenses if needed
   //   await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}#EXPENSE#`);
 

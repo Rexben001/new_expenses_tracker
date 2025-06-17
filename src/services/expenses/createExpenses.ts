@@ -29,7 +29,7 @@ export const createExpenses = async ({
   const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
   const sk = `EXPENSE#${_expenseId}`;
 
-  const category = parsedBody.category || "Others"; // Default category if not provided
+  const category = parsedBody.category ?? "Others"; // Default category if not provided
 
   const item = {
     ...parsedBody,
