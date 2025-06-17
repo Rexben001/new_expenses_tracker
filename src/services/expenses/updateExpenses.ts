@@ -23,6 +23,16 @@ export const updateExpenses = async ({
 
   const parsedBody = parseEventBody(body ?? "");
 
+  if (parsedBody.isNewExpense) {
+    return createNewOne({
+      dbService,
+      body,
+      userId,
+      budgetId,
+      expenseId,
+    });
+  }
+
   const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
   const sk = `EXPENSE#${expenseId}`;
 
@@ -55,12 +65,7 @@ export const updateExpenses = async ({
   } catch (err) {
     const error = err as Error;
     if (error.name === "ConditionalCheckFailedException") {
-      await deleteExpenses({
-        dbService,
-        userId,
-        expenseId,
-      });
-      return await createExpenses({
+      return createNewOne({
         dbService,
         body,
         userId,
@@ -71,6 +76,33 @@ export const updateExpenses = async ({
     throw new Error(error.message);
   }
 };
+
+async function createNewOne({
+  dbService,
+  userId,
+  expenseId,
+  body,
+  budgetId,
+}: {
+  dbService: DbService;
+  body: string;
+  userId: string;
+  budgetId?: string;
+  expenseId?: string;
+}) {
+  await deleteExpenses({
+    dbService,
+    userId,
+    expenseId,
+  });
+  return await createExpenses({
+    dbService,
+    body,
+    userId,
+    budgetId,
+    expenseId,
+  });
+}
 
 function parseEventBody(body: string) {
   try {
