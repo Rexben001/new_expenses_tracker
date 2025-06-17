@@ -27,13 +27,14 @@ export const updateExpenses = async ({
 
   const parsedBody = parseEventBody(body ?? "");
 
-  if (parsedBody.isNewExpense) {
+  if (parsedBody.oldBudgetId) {
     return createNewOne({
       dbService,
       body,
       userId,
       budgetId,
       expenseId,
+      oldBudgetId,
     });
   }
 
@@ -87,17 +88,20 @@ async function createNewOne({
   expenseId,
   body,
   budgetId,
+  oldBudgetId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
   expenseId?: string;
+  oldBudgetId?: string;
 }) {
   await deleteExpenses({
     dbService,
     userId,
     expenseId,
+    ...(oldBudgetId && { budgetId: oldBudgetId }),
   });
   return await createExpenses({
     dbService,
