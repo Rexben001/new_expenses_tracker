@@ -74,6 +74,12 @@ const handleExpensesRoutes = ({
   withExpenseId.addMethod("PUT", integration, additionaLMethodOptions);
   // DELETE /expenses/{expenseId} route
   withExpenseId.addMethod("DELETE", integration, additionaLMethodOptions);
+
+  const duplicates = withExpenseId.addResource("duplicates");
+
+  addCorsPreflight(duplicates);
+
+  duplicates.addMethod("POST", integration, additionaLMethodOptions);
 };
 
 const handleBudgetsRoutes = ({
