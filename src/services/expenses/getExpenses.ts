@@ -4,17 +4,19 @@ import { errorResponse, successResponse } from "../../utils/response";
 import { sortItemByRecent } from "../../utils/sort-item";
 import { DbService } from "../shared/dbService";
 
+type GetExpense = {
+  dbService: DbService;
+  userId: string;
+  expenseId?: string;
+  budgetId?: string;
+};
+
 export const getExpenses = async ({
   dbService,
   userId,
   expenseId,
   budgetId,
-}: {
-  dbService: DbService;
-  userId: string;
-  expenseId?: string;
-  budgetId?: string;
-}) => {
+}: GetExpense) => {
   if (!expenseId && !budgetId) {
     const indexName = "UserExpensesIndex";
 
@@ -29,6 +31,22 @@ export const getExpenses = async ({
 
     return formatResponse(items);
   }
+
+  const items = await getExpenseItem({
+    dbService,
+    userId,
+    expenseId,
+    budgetId,
+  });
+  return formatResponse(items);
+};
+
+export async function getExpenseItem({
+  dbService,
+  userId,
+  expenseId,
+  budgetId,
+}: GetExpense) {
   const keyConditionExpression = getKeyConditionExpression(budgetId, expenseId);
 
   const expressionAttributeValues = getExpressionAttributeValues(
@@ -41,9 +59,8 @@ export const getExpenses = async ({
     keyConditionExpression,
     expressionAttributeValues
   );
-
-  return formatResponse(items);
-};
+  return items;
+}
 
 const formatResponse = (items: Record<string, any>[]) => {
   if (items.length === 0) {

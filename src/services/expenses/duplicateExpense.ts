@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { DbService } from "../shared/dbService";
 import { createExpenses } from "./createExpenses";
-import { getExpenses } from "./getExpenses";
+import { getExpenseItem } from "./getExpenses";
 
 export const duplicateExpenses = async ({
   dbService,
@@ -14,18 +13,19 @@ export const duplicateExpenses = async ({
   budgetId?: string;
   expenseId?: string;
 }) => {
-  const _expenseId = expenseId ?? randomUUID();
-
-  const expense = await getExpenses({
+  const expenses = await getExpenseItem({
     dbService,
     userId,
     budgetId,
     expenseId,
   });
 
+  if (!expenses.length) throw new Error("No expense");
+
   const body = JSON.stringify({
-    ...expense,
+    ...expenses[0],
     id: null,
+    title: `${expenses[0].title} Copy`,
     updatedAt: new Date().toISOString(),
   });
 
