@@ -34,7 +34,7 @@ export const updateExpenses = async ({
       userId,
       budgetId,
       expenseId,
-      oldBudgetId,
+      oldBudgetId: parsedBody.oldBudgetId,
     });
   }
 
