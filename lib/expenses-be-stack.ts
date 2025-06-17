@@ -12,6 +12,7 @@ import {
   ProjectionType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
+import { MethodLoggingLevel } from "aws-cdk-lib/aws-apigateway";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -108,6 +109,11 @@ export class ExpensesBeStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, "ExpensesApi", {
       restApiName: "Expenses Service",
       description: "This service serves expenses.",
+      deployOptions: {
+        loggingLevel: MethodLoggingLevel.INFO,
+        throttlingBurstLimit: 20,
+        throttlingRateLimit: 100,
+      },
     });
 
     const authorizer = new apigateway.CognitoUserPoolsAuthorizer(
