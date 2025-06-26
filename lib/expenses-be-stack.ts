@@ -24,8 +24,8 @@ export class ExpensesBeStack extends cdk.Stack {
     super(scope, id, {
       ...props,
       env: {
-        account: "655187298276", // Use AWS account from environment
-        region: "eu-west-1", // Use AWS region from environment
+        account: "655187298276",
+        region: "eu-west-1",
       },
     });
 
