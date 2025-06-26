@@ -25,12 +25,12 @@ This is a complete AWS CDK-based backend infrastructure for an **Expenses Tracke
 
 ## 🧱 DynamoDB Schema
 
-| Key     | Description                              |
-| ------- | ---------------------------------------- |
-| `PK`    | Partition Key (e.g., `USER#123`)         |
-| `SK`    | Sort Key (e.g., `EXPENSE#2023-06-01`)    |
-| `gsiPk` | GSI partition key for user-based queries |
-| `gsiSk` | GSI sort key (e.g., `CATEGORY#food`)     |
+| Key     | Description                                                               |
+| ------- | ------------------------------------------------------------------------- |
+| `PK`    | Partition Key (e.g., `USER#123`)                                          |
+| `SK`    | Sort Key (e.g., `EXPENSE#2023-06-01`)                                     |
+| `gsiPk` | GSI partition key for user-based queries                                  |
+| `gsiSk` | GSI sort key (e.g., `EXPENSE#`, to get all expenses with/without budgets) |
 
 ### Global Secondary Index
 
@@ -76,6 +76,14 @@ Use the `IdToken` in the `Authorization` header:
 ```bash
 curl -H "Authorization: <ID_TOKEN>" https://your-api-id.execute-api.region.amazonaws.com/prod/expenses
 ```
+
+---
+
+## ⚙️ How AWS Lambda Was Used
+
+In this project, **AWS Lambda** serves as the backend compute layer. It powers all the business logic for the application, including managing expenses, budgets, and users. Each Lambda function is invoked via API Gateway routes and is responsible for handling specific HTTP requests such as `GET`, `POST`, `PUT`, and `DELETE`. These functions handle input validation, query or mutate DynamoDB records, and return structured responses.
+
+Additionally, one of the Lambda functions is used as a **Cognito PostConfirmation trigger**. When a user signs up, this function runs automatically to save the user's profile to DynamoDB. This enables seamless onboarding. Overall, using AWS Lambda allows the application to remain fully serverless, auto-scalable, and cost-effective — charging only for execution time and requiring no server management.
 
 ---
 
@@ -174,5 +182,3 @@ npx cdk deploy    # deploy to AWS
 - Integrate frontend using `fetch` with ID token
 
 ---
-
-## Postman Docs
