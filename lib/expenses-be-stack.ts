@@ -12,7 +12,8 @@ import {
   ProjectionType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { MethodLoggingLevel } from "aws-cdk-lib/aws-apigateway";
+import { CfnAccount, MethodLoggingLevel } from "aws-cdk-lib/aws-apigateway";
+import { ManagedPolicy, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -106,6 +107,15 @@ export class ExpensesBeStack extends cdk.Stack {
       handleUsersLambda
     );
 
+    const cwRole = new Role(this, "ApiGatewayCWLogsRole", {
+      assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+    });
+    cwRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName(
+        "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+      )
+    );
+
     const api = new apigateway.RestApi(this, "ExpensesApi", {
       restApiName: "Expenses Service",
       description: "This service serves expenses.",
@@ -169,6 +179,10 @@ export class ExpensesBeStack extends cdk.Stack {
       expensesIntegration,
       budgetsIntegration,
       usersIntegration,
+    });
+
+    new CfnAccount(this, "ApiGatewayAccount", {
+      cloudWatchRoleArn: cwRole.roleArn,
     });
 
     new cdk.CfnOutput(this, "API Gateway URL", {
