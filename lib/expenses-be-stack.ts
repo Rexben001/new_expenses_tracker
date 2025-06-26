@@ -12,7 +12,11 @@ import {
   ProjectionType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { CfnAccount, MethodLoggingLevel } from "aws-cdk-lib/aws-apigateway";
+import {
+  CfnAccount,
+  CfnStage,
+  MethodLoggingLevel,
+} from "aws-cdk-lib/aws-apigateway";
 import { ManagedPolicy, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 
 export class ExpensesBeStack extends cdk.Stack {
@@ -115,6 +119,9 @@ export class ExpensesBeStack extends cdk.Stack {
         "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
       )
     );
+    const gatewayAccount = new CfnAccount(this, "ApiGatewayAccount", {
+      cloudWatchRoleArn: cwRole.roleArn,
+    });
 
     const api = new apigateway.RestApi(this, "ExpensesApi", {
       restApiName: "Expenses Service",
@@ -151,7 +158,7 @@ export class ExpensesBeStack extends cdk.Stack {
       restApi: api,
       type: apigateway.ResponseType.UNAUTHORIZED, // 401
       responseHeaders: {
-        "Access-Control-Allow-Origin": "'*'", // or your frontend domain
+        "Access-Control-Allow-Origin": "'*'",
         "Access-Control-Allow-Headers": "'*'",
         "Access-Control-Allow-Methods": "'*'",
       },
@@ -181,9 +188,8 @@ export class ExpensesBeStack extends cdk.Stack {
       usersIntegration,
     });
 
-    new CfnAccount(this, "ApiGatewayAccount", {
-      cloudWatchRoleArn: cwRole.roleArn,
-    });
+    const deploymentStage = api.deploymentStage.node.defaultChild as CfnStage;
+    deploymentStage.addDependency(gatewayAccount);
 
     new cdk.CfnOutput(this, "API Gateway URL", {
       value: api.url, // this gives you the base URL, like https://xxx.execute-api.us-east-1.amazonaws.com/prod/
