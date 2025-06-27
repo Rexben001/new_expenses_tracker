@@ -8,6 +8,9 @@ This is a complete AWS CDK-based backend infrastructure for an **Expenses Tracke
 - **Cognito** for user authentication (email/password)
 - **CloudWatch Logs** for monitoring
 
+![Architecture Diagram](./images/architecture.png)
+
+
 ---
 
 ## 📦 Stack Overview
