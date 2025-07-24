@@ -4,15 +4,17 @@ import { successResponse } from "../../utils/response";
 import { sortItemByRecent } from "../../utils/sort-item";
 import { DbService } from "../shared/dbService";
 
-export const getBudget = async ({
-  dbService,
-  userId,
-  budgetId,
-}: {
+type GetBudget = {
   dbService: DbService;
   userId: string;
   budgetId?: string;
-}) => {
+};
+
+export async function getBudgetItem({
+  dbService,
+  userId,
+  budgetId,
+}: GetBudget) {
   const keyConditionExpression = getKeyConditionExpression(budgetId);
 
   const expressionAttributeValues = getExpressionAttributeValues(
@@ -24,6 +26,24 @@ export const getBudget = async ({
     keyConditionExpression,
     expressionAttributeValues
   );
+
+  return items;
+}
+
+export const getBudget = async ({
+  dbService,
+  userId,
+  budgetId,
+}: {
+  dbService: DbService;
+  userId: string;
+  budgetId?: string;
+}) => {
+  const items = await getBudgetItem({
+    dbService,
+    userId,
+    budgetId,
+  });
 
   return formatResponse(items);
 };
