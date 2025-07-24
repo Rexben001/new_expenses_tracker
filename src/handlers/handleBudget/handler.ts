@@ -7,6 +7,7 @@ import { updateBudgets } from "../../services/budgets/updateBudget";
 import { deleteBudget } from "../../services/budgets/deleteBudget";
 import { getUserId } from "../../utils/getUserId";
 import { errorResponse } from "../../utils/response";
+import { duplicateBudget } from "../../services/budgets/duplicateBudget";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent) => {
@@ -19,6 +20,14 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
           cause: new Error("User ID is missing from path parameters"),
+        });
+      }
+
+      if (event.path.includes("duplicates")) {
+        return await duplicateBudget({
+          dbService,
+          userId,
+          budgetId,
         });
       }
 

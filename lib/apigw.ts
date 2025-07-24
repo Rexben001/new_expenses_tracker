@@ -111,6 +111,12 @@ const handleBudgetsRoutes = ({
   budgetIdResource.addMethod("PUT", integration, authorizerParams);
   // DELETE /budgets/{budgetId}
   budgetIdResource.addMethod("DELETE", integration, authorizerParams);
+
+  const duplicates = budgetIdResource.addResource("duplicates");
+
+  addCorsPreflight(duplicates);
+
+  duplicates.addMethod("POST", integration, authorizerParams);
 };
 
 const handleUsersRoutes = ({
