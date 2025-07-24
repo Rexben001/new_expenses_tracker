@@ -1,5 +1,5 @@
 import { DbService } from "../shared/dbService";
-import { createBudget } from "./createBudget";
+import { createBudget, createBudgetOnly } from "./createBudget";
 import { getBudgetItem } from "./getBudget";
 import { getExpenseItem } from "../expenses/getExpenses";
 import { createExpenses } from "../expenses/createExpenses";
@@ -31,11 +31,10 @@ export const duplicateBudget = async ({
     userId,
   });
 
-  const newBudget = await createBudget({
+  const newBudget = await createBudgetOnly({
     dbService,
     body,
     userId,
-    budgetId,
   });
 
   const expenses = await getExpenseItem({
@@ -44,7 +43,7 @@ export const duplicateBudget = async ({
     budgetId,
   });
 
-  const budgetIdForExpenses = JSON.parse(newBudget.body).id;
+  const budgetIdForExpenses = newBudget.id;
 
   console.log({
     expenses,
