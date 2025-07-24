@@ -23,13 +23,6 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         });
       }
 
-      console.log({
-        eventMethod,
-        userId,
-        budgetId,
-        event
-      })
-
       if (event.path.includes("duplicates")) {
         return await duplicateBudget({
           dbService,
