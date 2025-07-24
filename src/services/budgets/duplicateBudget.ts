@@ -26,7 +26,7 @@ export const duplicateBudget = async ({
     id: null,
     title: `${budget[0].title} Copy`,
     updatedAt: new Date().toISOString(),
-    period: budget[0].period,
+    period: "monthly",
     category: budget[0].category || "Others", // Default category if not provided
     userId,
   });
