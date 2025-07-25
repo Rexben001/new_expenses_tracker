@@ -8,10 +8,12 @@ export const duplicateBudget = async ({
   dbService,
   userId,
   budgetId,
+  onlyBudget,
 }: {
   dbService: DbService;
   userId: string;
   budgetId?: string;
+  onlyBudget?: boolean;
 }) => {
   const budget = await getBudgetItem({
     dbService,
@@ -37,6 +39,10 @@ export const duplicateBudget = async ({
     userId,
   });
 
+  if (onlyBudget) {
+    return newBudget;
+  }
+
   const expenses = await getExpenseItem({
     dbService,
     userId,
@@ -44,12 +50,6 @@ export const duplicateBudget = async ({
   });
 
   const budgetIdForExpenses = newBudget.id;
-
-  console.log({
-    expenses,
-    budgetIdForExpenses,
-    userId,
-  });
 
   await Promise.all(
     expenses.map((expense) => {

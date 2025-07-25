@@ -91,6 +91,13 @@ const handleBudgetsRoutes = ({
   authorizerParams: MethodOptions;
   integration: aws_apigateway.LambdaIntegration;
 }) => {
+  const additionaLMethodOptions: MethodOptions = {
+    ...authorizerParams,
+    requestParameters: {
+      "method.request.querystring.only": false,
+    },
+  };
+
   const budgetRootResource = api.root.addResource("budgets");
   addCorsPreflight(budgetRootResource);
 
@@ -116,7 +123,7 @@ const handleBudgetsRoutes = ({
 
   addCorsPreflight(duplicates);
 
-  duplicates.addMethod("POST", integration, authorizerParams);
+  duplicates.addMethod("POST", integration, additionaLMethodOptions);
 };
 
 const handleUsersRoutes = ({
