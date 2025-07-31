@@ -15,6 +15,7 @@ export const BudgetSchema = z.object({
     message: "Date must be a valid date string",
   }),
   category: z.string().optional(),
+  upcoming: z.boolean().default(false),
 });
 export type Budget = z.infer<typeof BudgetSchema>;
 
@@ -29,6 +30,8 @@ export const BudgetRequestSchema = z.object({
   userId: z.string().uuid().optional(),
   category: z.string().optional(),
   updatedAt: z.string().optional(),
+  upcoming: z.boolean().optional().default(false),
+
   // Optional category field
 });
 export type BudgetRequest = z.infer<typeof BudgetRequestSchema>;

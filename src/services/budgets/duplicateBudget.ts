@@ -1,5 +1,5 @@
 import { DbService } from "../shared/dbService";
-import { createBudget, createBudgetOnly } from "./createBudget";
+import { createBudgetOnly } from "./createBudget";
 import { getBudgetItem } from "./getBudget";
 import { getExpenseItem } from "../expenses/getExpenses";
 import { createExpenses } from "../expenses/createExpenses";
@@ -59,6 +59,7 @@ export const duplicateBudget = async ({
         title: `${expense.title}`,
         updatedAt: new Date().toISOString(),
         budgetId: budgetIdForExpenses,
+        upcoming: true,
       };
       return createExpenses({
         dbService,
