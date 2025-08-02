@@ -3,6 +3,8 @@ import { createBudgetOnly } from "./createBudget";
 import { getBudgetItem } from "./getBudget";
 import { getExpenseItem } from "../expenses/getExpenses";
 import { createExpenses } from "../expenses/createExpenses";
+import { errorResponse, successResponse } from "../../utils/response";
+import { formatDbItem } from "../../utils/format-item";
 
 export const duplicateBudget = async ({
   dbService,
@@ -21,7 +23,10 @@ export const duplicateBudget = async ({
     budgetId,
   });
 
-  if (!budget.length) throw new Error("No expense");
+  if (!budget.length) {
+    console.error("No budget");
+    return errorResponse();
+  }
 
   const body = JSON.stringify({
     ...budget[0],
@@ -40,7 +45,10 @@ export const duplicateBudget = async ({
   });
 
   if (onlyBudget) {
-    return newBudget;
+    return successResponse({
+      message: "Budget duplicated successfully",
+      item: formatDbItem(newBudget),
+    });
   }
 
   const expenses = await getExpenseItem({
@@ -70,5 +78,8 @@ export const duplicateBudget = async ({
     })
   );
 
-  return newBudget;
+  return successResponse({
+    message: "Budget duplicated successfully",
+    item: formatDbItem(newBudget),
+  });
 };

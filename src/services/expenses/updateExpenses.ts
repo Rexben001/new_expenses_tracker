@@ -21,10 +21,6 @@ export const updateExpenses = async ({
     throw new Error("Expense ID is required for updating an expense");
   }
 
-  console.log({
-    body,
-  });
-
   const parsedBody = parseEventBody(body ?? "");
 
   if (parsedBody.oldBudgetId) {
