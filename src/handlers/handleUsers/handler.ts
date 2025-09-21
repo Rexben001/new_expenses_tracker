@@ -54,16 +54,12 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   };
 };
 
-function isApiGatewayEvent(event: any): event is APIGatewayEvent {
-  return event?.httpMethod !== undefined && event?.headers !== undefined;
-}
-
 // Check if it's a Cognito PostConfirmation trigger
 function isPostConfirmationEvent(
   event: any
 ): event is PostConfirmationTriggerEvent {
   return (
-    event?.triggerSource?.startsWith("PostConfirmation_") &&
+    event?.triggerSource?.startsWith("PostConfirmation_ConfirmSignUp") &&
     event?.request?.userAttributes !== undefined
   );
 }
