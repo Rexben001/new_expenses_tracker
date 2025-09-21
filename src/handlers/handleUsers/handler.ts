@@ -14,11 +14,13 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         const userId = event.request.userAttributes.sub;
         const email = event.request.userAttributes.email;
 
-        await createUser({
-          dbService,
-          userId,
-          email,
-        });
+        if (event?.triggerSource === "PostConfirmation_ConfirmSignUp") {
+          await createUser({
+            dbService,
+            userId,
+            email,
+          });
+        }
         return event;
       } else {
         const eventMethod = event.httpMethod;
@@ -59,7 +61,7 @@ function isPostConfirmationEvent(
   event: any
 ): event is PostConfirmationTriggerEvent {
   return (
-    event?.triggerSource?.startsWith("PostConfirmation_ConfirmSignUp") &&
+    event?.triggerSource?.startsWith("PostConfirmation_") &&
     event?.request?.userAttributes !== undefined
   );
 }
