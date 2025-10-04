@@ -7,6 +7,7 @@ import {
 } from "../../domain/models/expense";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
+import { createExpensesPk } from "../../utils/createPk";
 
 export const createExpenses = async ({
   dbService,
@@ -14,19 +15,21 @@ export const createExpenses = async ({
   userId,
   budgetId,
   expenseId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
   expenseId?: string;
+  subAccountId?: string;
 }) => {
   const _expenseId = expenseId ?? randomUUID();
 
   const parsedBody = parseEventBody(body ?? "");
 
   const userPK = `USER#${userId}`;
-  const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
+  const pk = createExpensesPk(userId, budgetId, subAccountId);
   const sk = `EXPENSE#${_expenseId}`;
 
   const category = parsedBody.category ?? "Others"; // Default category if not provided

@@ -140,4 +140,9 @@ const handleUsersRoutes = ({
 
   users.addMethod("GET", integration, authorizerParams);
   users.addMethod("PUT", integration, authorizerParams);
+  const subAccountIdResource = users.addResource("{subAccountId}");
+  addCorsPreflight(subAccountIdResource);
+  subAccountIdResource.addMethod("GET", integration, authorizerParams);
+  subAccountIdResource.addMethod("PUT", integration, authorizerParams);
+  subAccountIdResource.addMethod("POST", integration, authorizerParams);
 };

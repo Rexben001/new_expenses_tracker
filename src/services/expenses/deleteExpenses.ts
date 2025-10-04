@@ -1,3 +1,4 @@
+import { createExpensesPk } from "../../utils/createPk";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
 
@@ -6,11 +7,13 @@ export const deleteExpenses = async ({
   userId,
   expenseId,
   budgetId,
+  subAccountId,
 }: {
   dbService: DbService;
   userId: string;
   expenseId?: string;
   budgetId?: string;
+  subAccountId?: string;
 }) => {
   if (!expenseId) {
     return {
@@ -19,7 +22,7 @@ export const deleteExpenses = async ({
     };
   }
 
-  const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
+  const pk = createExpensesPk(userId, budgetId, subAccountId);
   const sk = `EXPENSE#${expenseId}`;
   await dbService.deleteItem({
     PK: pk,

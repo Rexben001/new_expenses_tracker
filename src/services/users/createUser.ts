@@ -30,3 +30,40 @@ export const createUser = async ({
     body: JSON.stringify({ message: "User created successfully", userId }),
   };
 };
+
+export const createSubAccount = async ({
+  dbService,
+  userId,
+}: {
+  dbService: DbService;
+  userId: string;
+}) => {
+  if (!userId) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        message: "User ID is required",
+      }),
+    };
+  }
+  const subAccountId = crypto.randomUUID();
+
+  await dbService.putItem({
+    PK: `USER#${userId}`,
+    SK: `SUB#${subAccountId}`,
+    userId,
+    subAccountId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    name: "Default",
+    currency: "EUR",
+  });
+
+  return {
+    statusCode: 201,
+    body: JSON.stringify({
+      message: "Sub Account created successfully",
+      subAccountId,
+    }),
+  };
+};

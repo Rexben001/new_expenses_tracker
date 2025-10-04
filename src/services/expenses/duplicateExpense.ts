@@ -7,17 +7,20 @@ export const duplicateExpenses = async ({
   userId,
   budgetId,
   expenseId,
+  subAccountId,
 }: {
   dbService: DbService;
   userId: string;
   budgetId?: string;
   expenseId?: string;
+  subAccountId?: string;
 }) => {
   const expenses = await getExpenseItem({
     dbService,
     userId,
     budgetId,
     expenseId,
+    subAccountId,
   });
 
   if (!expenses.length) throw new Error("No expense");
@@ -34,5 +37,6 @@ export const duplicateExpenses = async ({
     body,
     userId,
     budgetId,
+    subAccountId,
   });
 };

@@ -6,10 +6,12 @@ export const updateUser = async ({
   dbService,
   body,
   userId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
+  subAccountId?: string;
 }) => {
   if (!userId) {
     throw new Error("User ID is required for updating an user");
@@ -18,7 +20,7 @@ export const updateUser = async ({
   const parsedBody = parseEventBody(body ?? "");
 
   const pk = `USER#${userId}`;
-  const sk = `PROFILE#${userId}`;
+  const sk = subAccountId ? `SUB#${subAccountId}` : `PROFILE#${userId}`;
 
   const updateExpression = Object.keys(parsedBody)
     .map((key) => `#${key} = :${key}`)

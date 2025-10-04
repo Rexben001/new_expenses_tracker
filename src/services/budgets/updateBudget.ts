@@ -1,3 +1,4 @@
+import { createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
@@ -7,11 +8,13 @@ export const updateBudgets = async ({
   body,
   userId,
   budgetId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
+  subAccountId?: string;
 }) => {
   if (!budgetId) {
     throw new Error("Budget ID is required for updating a budget");
@@ -19,7 +22,7 @@ export const updateBudgets = async ({
 
   const parsedBody = parseEventBody(body ?? "");
 
-  const pk = `USER#${userId}`;
+  const pk = createPk(userId, subAccountId);
   const sk = `BUDGET#${budgetId}`;
 
   const updateExpression = Object.keys(parsedBody)

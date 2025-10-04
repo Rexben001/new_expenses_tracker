@@ -1,3 +1,4 @@
+import { createExpensesPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
@@ -10,12 +11,14 @@ export const updateExpenses = async ({
   userId,
   budgetId,
   expenseId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
   expenseId?: string;
+  subAccountId?: string;
 }) => {
   if (!expenseId) {
     throw new Error("Expense ID is required for updating an expense");
@@ -31,10 +34,11 @@ export const updateExpenses = async ({
       budgetId,
       expenseId,
       oldBudgetId: parsedBody.oldBudgetId,
+      subAccountId,
     });
   }
 
-  const pk = budgetId ? `USER#${userId}#BUDGET#${budgetId}` : `USER#${userId}`;
+  const pk = createExpensesPk(userId, budgetId, subAccountId);
   const sk = `EXPENSE#${expenseId}`;
 
   try {
@@ -72,6 +76,7 @@ export const updateExpenses = async ({
         userId,
         budgetId,
         expenseId,
+        subAccountId,
       });
     }
     throw new Error(error.message);
@@ -85,6 +90,7 @@ async function createNewOne({
   body,
   budgetId,
   oldBudgetId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
@@ -92,11 +98,13 @@ async function createNewOne({
   budgetId?: string;
   expenseId?: string;
   oldBudgetId?: string;
+  subAccountId?: string;
 }) {
   await deleteExpenses({
     dbService,
     userId,
     expenseId,
+    ...(subAccountId && { subAccountId }),
     ...(oldBudgetId && { budgetId: oldBudgetId }),
   });
   return await createExpenses({
@@ -105,6 +113,7 @@ async function createNewOne({
     userId,
     budgetId,
     expenseId,
+    subAccountId,
   });
 }
 

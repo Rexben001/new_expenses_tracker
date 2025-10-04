@@ -1,4 +1,5 @@
 import { Budget } from "../../domain/models/budget";
+import { createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { sortItemByRecent } from "../../utils/sort-item";
@@ -8,12 +9,14 @@ type GetBudget = {
   dbService: DbService;
   userId: string;
   budgetId?: string;
+  subAccountId?: string;
 };
 
 export async function getBudgetItem({
   dbService,
   userId,
   budgetId,
+  subAccountId,
 }: GetBudget) {
   const keyConditionExpression = getKeyConditionExpression(budgetId);
 
@@ -34,15 +37,18 @@ export const getBudget = async ({
   dbService,
   userId,
   budgetId,
+  subAccountId
 }: {
   dbService: DbService;
   userId: string;
   budgetId?: string;
+  subAccountId?: string;
 }) => {
   const items = await getBudgetItem({
     dbService,
     userId,
     budgetId,
+    subAccountId
   });
 
   return formatResponse(items);
@@ -70,16 +76,17 @@ const getKeyConditionExpression = (budgetId?: string): string => {
 
 const getExpressionAttributeValues = (
   userId: string,
-  budgetId?: string
+  budgetId?: string,
+  subAccountId?: string
 ): Record<string, any> => {
   if (budgetId)
     return {
-      ":pk": { S: `USER#${userId}` },
+      ":pk": { S: createPk(userId, subAccountId) },
       ":sk": { S: `BUDGET#${budgetId}` },
     };
 
   return {
-    ":pk": { S: `USER#${userId}` },
+    ":pk": { S: createPk(userId, subAccountId) },
     ":skPrefix": { S: "BUDGET#" },
   };
 };

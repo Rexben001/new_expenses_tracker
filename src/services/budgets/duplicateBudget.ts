@@ -11,16 +11,19 @@ export const duplicateBudget = async ({
   userId,
   budgetId,
   onlyBudget,
+  subAccountId,
 }: {
   dbService: DbService;
   userId: string;
   budgetId?: string;
   onlyBudget?: boolean;
+  subAccountId?: string;
 }) => {
   const budget = await getBudgetItem({
     dbService,
     userId,
     budgetId,
+    subAccountId,
   });
 
   if (!budget.length) {
@@ -36,12 +39,14 @@ export const duplicateBudget = async ({
     period: "monthly",
     category: budget[0].category || "Others", // Default category if not provided
     userId,
+    subAccountId: subAccountId || budget[0].subAccountId || null,
   });
 
   const newBudget = await createBudgetOnly({
     dbService,
     body,
     userId,
+    subAccountId,
   });
 
   if (onlyBudget) {
@@ -55,6 +60,7 @@ export const duplicateBudget = async ({
     dbService,
     userId,
     budgetId,
+    subAccountId,
   });
 
   const budgetIdForExpenses = newBudget.id;
@@ -74,6 +80,7 @@ export const duplicateBudget = async ({
         body: JSON.stringify(newExpenseBody),
         userId,
         budgetId: budgetIdForExpenses,
+        subAccountId: subAccountId || expense.subAccountId || null,
       });
     })
   );
@@ -83,3 +90,4 @@ export const duplicateBudget = async ({
     item: formatDbItem(newBudget),
   });
 };
+  

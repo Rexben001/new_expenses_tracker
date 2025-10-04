@@ -17,6 +17,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       const budgetId = event.pathParameters?.budgetId;
       const body = event.body ?? "";
       const onlyBudget = event.queryStringParameters?.only === "true";
+      const subAccountId = event.queryStringParameters?.subId;
 
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
@@ -30,6 +31,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
           userId,
           budgetId,
           onlyBudget,
+          subAccountId,
         });
       }
 
@@ -39,12 +41,14 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             dbService,
             body,
             userId,
+            subAccountId,
           });
         case "GET":
           return await getBudget({
             dbService,
             userId,
             budgetId,
+            subAccountId,
           });
         case "PUT":
           return await updateBudgets({
@@ -52,12 +56,14 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             body,
             userId,
             budgetId,
+            subAccountId,
           });
         case "DELETE":
           return await deleteBudget({
             dbService,
             userId,
             budgetId,
+            subAccountId,
           });
         default:
           throw new HttpError("Method not allowed", 405, {

@@ -17,6 +17,7 @@ export const BudgetSchema = z.object({
   category: z.string().optional(),
   upcoming: z.boolean().default(false),
   favorite: z.boolean().default(false),
+  subAccountId: z.string().uuid().optional(),
 });
 export type Budget = z.infer<typeof BudgetSchema>;
 
@@ -33,6 +34,7 @@ export const BudgetRequestSchema = z.object({
   updatedAt: z.string().optional(),
   upcoming: z.boolean().optional().default(false),
   favorite: z.boolean().default(false),
+  subAccountId: z.string().uuid().optional(),
 
   // Optional category field
 });

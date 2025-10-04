@@ -4,24 +4,26 @@ import { HttpError } from "../../utils/http-error";
 import { DbService } from "../shared/dbService";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
+import { createPk } from "../../utils/createPk";
 
 export const createBudgetOnly = async ({
   dbService,
   body,
   userId,
-  budgetId
+  budgetId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
-    budgetId?: string;
-
+  budgetId?: string;
+  subAccountId?: string;
 }) => {
   const _budgetId = budgetId ?? randomUUID();
 
   const parsedBody = parseEventBody(body ?? "");
 
-  const pk = `USER#${userId}`;
+  const pk = createPk(userId, subAccountId);
   const sk = `BUDGET#${_budgetId}`;
 
   const category = parsedBody.category || "Others"; // Default category if not provided
@@ -44,16 +46,19 @@ export const createBudget = async ({
   dbService,
   body,
   userId,
+  subAccountId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
+  subAccountId?: string;
 }) => {
   const item = await createBudgetOnly({
     dbService,
     body,
     userId,
+    subAccountId,
   });
 
   return successResponse(

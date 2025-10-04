@@ -1,6 +1,6 @@
 import { APIGatewayEvent, PostConfirmationTriggerEvent } from "aws-lambda";
 import { DbService } from "../../services/shared/dbService";
-import { createUser } from "../../services/users/createUser";
+import { createSubAccount, createUser } from "../../services/users/createUser";
 import { getUser } from "../../services/users/getUser";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
@@ -26,14 +26,23 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         const eventMethod = event.httpMethod;
         const userId = getUserId(event);
 
+        const subAccountId = event.queryStringParameters?.subId;
+
         switch (eventMethod) {
           case "GET":
-            return getUser({ dbService, userId });
+            return getUser({ dbService, userId , subAccountId});
 
           case "PUT":
             return updateUser({
               dbService,
               body: event.body ?? "",
+              userId,
+              subAccountId,
+            });
+
+          case "POST":
+            return createSubAccount({
+              dbService,
               userId,
             });
 

@@ -1,4 +1,5 @@
 import { Expense } from "../../domain/models/expense";
+import { createExpensesPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { errorResponse, successResponse } from "../../utils/response";
 import { sortItemByRecent } from "../../utils/sort-item";
@@ -9,6 +10,7 @@ type GetExpense = {
   userId: string;
   expenseId?: string;
   budgetId?: string;
+  subAccountId?: string;
 };
 
 export const getExpenses = async ({
@@ -46,6 +48,7 @@ export async function getExpenseItem({
   userId,
   expenseId,
   budgetId,
+  subAccountId,
 }: GetExpense) {
   const keyConditionExpression = getKeyConditionExpression(budgetId, expenseId);
 
@@ -75,30 +78,31 @@ const formatResponse = (items: Record<string, any>[]) => {
 const getExpressionAttributeValues = (
   userId: string,
   budgetId?: string,
-  expenseId?: string
+  expenseId?: string,
+  subAccountId?: string
 ): Record<string, any> => {
   if (budgetId && expenseId)
     return {
-      ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
+      ":pk": { S: createExpensesPk(userId, budgetId, subAccountId) },
       ":sk": { S: `EXPENSE#${expenseId}` },
     };
 
   if (budgetId) {
     return {
-      ":pk": { S: `USER#${userId}#BUDGET#${budgetId}` },
+      ":pk": { S: createExpensesPk(userId, budgetId, subAccountId) },
       ":skPrefix": { S: "EXPENSE#" },
     };
   }
 
   if (expenseId) {
     return {
-      ":pk": { S: `USER#${userId}` },
+      ":pk": { S: createExpensesPk(userId, undefined, subAccountId) },
       ":sk": { S: `EXPENSE#${expenseId}` },
     };
   }
 
   return {
-    ":pk": { S: `USER#${userId}` },
+    ":pk": { S: createExpensesPk(userId, undefined, subAccountId) },
     ":skPrefix": { S: "EXPENSE#" },
   };
 };
