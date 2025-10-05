@@ -1,3 +1,4 @@
+import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
 import { randomUUID } from "node:crypto";
 
@@ -60,11 +61,8 @@ export const createSubAccount = async ({
     currency: "EUR",
   });
 
-  return {
-    statusCode: 201,
-    body: JSON.stringify({
-      message: "Sub Account created successfully",
-      subAccountId,
-    }),
-  };
+  return successResponse({
+    message: "Sub Account created successfully",
+    subAccountId,
+  });
 };
