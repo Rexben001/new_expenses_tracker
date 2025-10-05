@@ -32,7 +32,10 @@ export const getUser = async ({
       return errorResponse("Sub account not found", 404);
 
     return successResponse({
-      profile: formatDbItem(profileItems[0]),
+      profile: formatDbItem({
+        ...profileItems[0],
+        accountType: "Main",
+      }),
       subAccount: formatDbItem(subAccountItems[0]),
     });
   } else {
@@ -51,7 +54,10 @@ export const getUser = async ({
     if (!profileItems.length) return errorResponse("Profile not found", 404);
 
     return successResponse({
-      profile: formatDbItem(profileItems[0]),
+      profile: formatDbItem({
+        ...profileItems[0],
+        accountType: "Sub",
+      }),
       subAccounts: subAccountItems.map(formatDbItem),
     });
   }
