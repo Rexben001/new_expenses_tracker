@@ -1,4 +1,5 @@
 import { DbService } from "../shared/dbService";
+import { randomUUID } from "node:crypto";
 
 export const createUser = async ({
   dbService,
@@ -46,7 +47,7 @@ export const createSubAccount = async ({
       }),
     };
   }
-  const subAccountId = crypto.randomUUID();
+  const subAccountId = randomUUID();
 
   await dbService.putItem({
     PK: `USER#${userId}`,
