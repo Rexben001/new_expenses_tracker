@@ -12,7 +12,7 @@ export const getUser = async ({
   userId: string;
   subAccountId?: string;
 }) => {
-  const pk = createPk(userId, subAccountId);
+  const pk = createPk(userId);
 
   if (subAccountId) {
     // Fetch both profile and sub account in parallel
