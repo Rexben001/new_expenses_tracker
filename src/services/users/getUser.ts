@@ -36,7 +36,7 @@ export const getUser = async ({
         ...profileItems[0],
         accountType: "Sub",
       }),
-      subAccount: formatDbItem(subAccountItems),
+      subAccounts: subAccountItems.map(formatDbItem),
     });
   } else {
     // Fetch profile and all sub accounts in parallel
