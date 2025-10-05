@@ -34,7 +34,7 @@ export const getUser = async ({
     return successResponse({
       profile: formatDbItem({
         ...profileItems[0],
-        accountType: "Main",
+        accountType: "Sub",
       }),
       subAccount: formatDbItem(subAccountItems[0]),
     });
@@ -56,7 +56,7 @@ export const getUser = async ({
     return successResponse({
       profile: formatDbItem({
         ...profileItems[0],
-        accountType: "Sub",
+        accountType: "Main",
       }),
       subAccounts: subAccountItems.map(formatDbItem),
     });
