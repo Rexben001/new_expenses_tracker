@@ -55,7 +55,8 @@ export async function getExpenseItem({
   const expressionAttributeValues = getExpressionAttributeValues(
     userId,
     budgetId,
-    expenseId
+    expenseId,
+    subAccountId
   );
 
   const items = await dbService.queryItems(
