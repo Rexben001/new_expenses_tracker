@@ -1,5 +1,6 @@
+import { create } from "node:domain";
 import { Expense } from "../../domain/models/expense";
-import { createExpensesPk } from "../../utils/createPk";
+import { createExpensesPk, createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { errorResponse, successResponse } from "../../utils/response";
 import { sortItemByRecent } from "../../utils/sort-item";
@@ -18,6 +19,7 @@ export const getExpenses = async ({
   userId,
   expenseId,
   budgetId,
+  subAccountId,
 }: GetExpense) => {
   if (!expenseId && !budgetId) {
     const indexName = "UserExpensesIndex";
@@ -25,7 +27,7 @@ export const getExpenses = async ({
     const items = await dbService.queryItems(
       "gsiPk = :user AND begins_with(gsiSk, :prefix)",
       {
-        ":user": { S: `USER#${userId}` },
+        ":user": { S: createPk(userId, subAccountId) },
         ":prefix": { S: "EXPENSE#" },
       },
       indexName
@@ -39,6 +41,7 @@ export const getExpenses = async ({
     userId,
     expenseId,
     budgetId,
+    subAccountId,
   });
   return formatResponse(items);
 };

@@ -22,7 +22,8 @@ export async function getBudgetItem({
 
   const expressionAttributeValues = getExpressionAttributeValues(
     userId,
-    budgetId
+    budgetId,
+    subAccountId
   );
 
   const items = await dbService.queryItems(
@@ -37,7 +38,7 @@ export const getBudget = async ({
   dbService,
   userId,
   budgetId,
-  subAccountId
+  subAccountId,
 }: {
   dbService: DbService;
   userId: string;
@@ -48,7 +49,7 @@ export const getBudget = async ({
     dbService,
     userId,
     budgetId,
-    subAccountId
+    subAccountId,
   });
 
   return formatResponse(items);
