@@ -6,15 +6,15 @@ export function createExpensesPk(
 ) {
   let pk = `USER#${userId}`;
   if (subAccountId) {
-    pk += `SUB#${subAccountId}`;
+    pk += `#SUB#${subAccountId}`;
   }
 
   if (budgetId) {
-    pk += `BUDGET#${budgetId}`;
+    pk += `#BUDGET#${budgetId}`;
   }
 
   if (expenseId) {
-    pk += `EXPENSE#${expenseId}`;
+    pk += `#EXPENSE#${expenseId}`;
   }
   return pk;
 }
