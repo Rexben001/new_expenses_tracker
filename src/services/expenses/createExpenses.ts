@@ -32,6 +32,13 @@ export const createExpenses = async ({
   const pk = createExpensesPk(userId, budgetId, subAccountId);
   const sk = `EXPENSE#${_expenseId}`;
 
+  console.log({
+    pk,
+    sk,
+    userPK,
+    _expenseId,
+  });
+
   const category = parsedBody.category ?? "Others"; // Default category if not provided
 
   const item = {
@@ -45,6 +52,7 @@ export const createExpenses = async ({
     category,
     updatedAt: parsedBody.updatedAt || new Date().toISOString(),
     budgetId: budgetId ?? undefined,
+    subAccountId: subAccountId ?? undefined,
   };
 
   await dbService.putItem(item);
