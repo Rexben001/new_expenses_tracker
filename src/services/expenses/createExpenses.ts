@@ -8,7 +8,6 @@ import {
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { createExpensesPk, createPk } from "../../utils/createPk";
-import { create } from "node:domain";
 
 export const createExpenses = async ({
   dbService,
@@ -48,6 +47,10 @@ export const createExpenses = async ({
     budgetId: budgetId ?? undefined,
     subAccountId: subAccountId ?? undefined,
   };
+
+  console.log({
+    item,
+  });
 
   await dbService.putItem(item);
   return successResponse(
