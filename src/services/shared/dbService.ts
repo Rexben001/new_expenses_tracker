@@ -124,10 +124,6 @@ export function makeDbService(
       const response = await client.send(command);
       const items = response.Items || [];
 
-      console.log({
-        items,
-      });
-
       for (const item of items) {
         const deleteCommand = new DeleteItemCommand({
           TableName: tableName,

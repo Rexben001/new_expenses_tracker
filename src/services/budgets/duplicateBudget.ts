@@ -64,13 +64,9 @@ export const duplicateBudget = async ({
     subAccountId,
   });
 
-  console.log({
-    expenses,
-  });
-
   const budgetIdForExpenses = newBudget.id;
 
-  await Promise.all(
+  const rr = await Promise.all(
     expenses.map((expense) => {
       const newExpenseBody = {
         ...expense,
@@ -79,16 +75,19 @@ export const duplicateBudget = async ({
         updatedAt: new Date().toISOString(),
         budgetId: budgetIdForExpenses,
         upcoming: true,
+        favorite: false,
       };
       return createExpenses({
         dbService,
         body: JSON.stringify(newExpenseBody),
         userId,
         budgetId: budgetIdForExpenses,
-        subAccountId: subAccountId || expense.subAccountId || null,
+        subAccountId: subAccountId || undefined,
       });
     })
   );
+
+  console.log({ rr });
 
   return successResponse({
     message: "Budget duplicated successfully",

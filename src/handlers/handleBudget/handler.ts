@@ -19,12 +19,6 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       const onlyBudget = event.queryStringParameters?.only === "true";
       const subAccountId = event.queryStringParameters?.subId;
 
-      console.log({
-        userId,
-        budgetId,
-        onlyBudget,
-        subAccountId,
-      });
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
           cause: new Error("User ID is missing from path parameters"),
