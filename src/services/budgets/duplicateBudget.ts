@@ -39,6 +39,7 @@ export const duplicateBudget = async ({
     period: "monthly",
     category: budget[0].category || "Others", // Default category if not provided
     userId,
+    favorite: false,
     subAccountId: subAccountId || budget[0].subAccountId || null,
   });
 
@@ -61,6 +62,10 @@ export const duplicateBudget = async ({
     userId,
     budgetId,
     subAccountId,
+  });
+
+  console.log({
+    expenses,
   });
 
   const budgetIdForExpenses = newBudget.id;
@@ -90,4 +95,3 @@ export const duplicateBudget = async ({
     item: formatDbItem(newBudget),
   });
 };
-  
