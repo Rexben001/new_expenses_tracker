@@ -66,6 +66,13 @@ export const duplicateBudget = async ({
 
   const budgetIdForExpenses = newBudget.id;
 
+  console.log({
+    expenses,
+    onlyBudget,
+    budgetIdForExpenses,
+    subAccountId,
+  });
+
   await Promise.all(
     expenses.map((expense) => {
       const newExpenseBody = {
