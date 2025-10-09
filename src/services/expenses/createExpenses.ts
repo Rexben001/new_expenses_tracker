@@ -7,7 +7,8 @@ import {
 } from "../../domain/models/expense";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
-import { createExpensesPk } from "../../utils/createPk";
+import { createExpensesPk, createPk } from "../../utils/createPk";
+import { create } from "node:domain";
 
 export const createExpenses = async ({
   dbService,
@@ -28,7 +29,7 @@ export const createExpenses = async ({
 
   const parsedBody = parseEventBody(body ?? "");
 
-  const userPK = `USER#${userId}`;
+  const userPK = createPk(userId, subAccountId);
   const pk = createExpensesPk(userId, budgetId, subAccountId);
   const sk = `EXPENSE#${_expenseId}`;
 
