@@ -141,4 +141,5 @@ const handleUsersRoutes = ({
   users.addMethod("GET", integration, authorizerParams);
   users.addMethod("PUT", integration, authorizerParams);
   users.addMethod("POST", integration, authorizerParams);
+  users.addMethod("DELETE", integration, authorizerParams);
 };
