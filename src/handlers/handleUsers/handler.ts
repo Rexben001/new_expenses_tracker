@@ -5,6 +5,7 @@ import { getUser } from "../../services/users/getUser";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
 import { updateUser } from "../../services/users/updateUser";
+import { deleteSubAccount } from "../../services/users/deleteSubAccount";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: PostConfirmationTriggerEvent | APIGatewayEvent) => {
@@ -30,7 +31,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
 
         switch (eventMethod) {
           case "GET":
-            return getUser({ dbService, userId , subAccountId});
+            return getUser({ dbService, userId, subAccountId });
 
           case "PUT":
             return updateUser({
@@ -44,6 +45,13 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             return createSubAccount({
               dbService,
               userId,
+            });
+
+          case "DELETE":
+            return deleteSubAccount({
+              dbService,
+              userId,
+              subAccountId,
             });
 
           default:

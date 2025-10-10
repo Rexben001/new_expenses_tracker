@@ -48,10 +48,6 @@ export const createExpenses = async ({
     subAccountId: subAccountId ?? undefined,
   };
 
-  console.log({
-    item,
-  });
-
   await dbService.putItem(item);
   return successResponse(
     {
