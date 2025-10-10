@@ -26,10 +26,10 @@ export async function getBudgetItem({
     subAccountId
   );
 
-  const items = await dbService.queryItems(
+  const items = (await dbService.queryItems(
     keyConditionExpression,
     expressionAttributeValues
-  );
+  )) as Budget[];
 
   return items;
 }

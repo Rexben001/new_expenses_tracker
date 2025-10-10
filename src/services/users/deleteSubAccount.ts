@@ -1,4 +1,7 @@
-import { successResponse } from "../../utils/response";
+import { Budget } from "../../domain/models/budget";
+import { errorResponse, successResponse } from "../../utils/response";
+import { deleteExpensesByBudget } from "../budgets/deleteBudget";
+import { getBudgetItem } from "../budgets/getBudget";
 import { DbService } from "../shared/dbService";
 
 export const deleteSubAccount = async ({
@@ -19,16 +22,36 @@ export const deleteSubAccount = async ({
     };
   }
 
-  // Delete all items associated with the sub-account
-  const itemsToDelete = await dbService.queryItems("PK = :pk", {
-    ":pk": `USER#${userId}#SUB#${subAccountId}`,
+  await dbService.deleteItem({
+    PK: `USER#${userId}`,
+    SK: `SUB#${subAccountId}`,
   });
 
-  const deletePromises = itemsToDelete.map((item) =>
-    dbService.deleteItem({ PK: item.PK, SK: item.SK })
-  );
+  const budgets: Budget[] = await getBudgetItem({
+    dbService,
+    userId,
+    subAccountId,
+  });
 
-  await Promise.all(deletePromises);
+  if (budgets.length === 0) {
+    return successResponse({
+      message: "Sub-account deleted successfully",
+    });
+  }
+
+  await Promise.all(
+    budgets.map(async (budget: Budget) => {
+      const budgetId = budget.id;
+      if (budgetId) {
+        await deleteExpensesByBudget({
+          dbService,
+          userId,
+          budgetId,
+          subAccountId,
+        });
+      }
+    })
+  );
 
   return successResponse({
     message: "Sub-account and associated data deleted successfully",

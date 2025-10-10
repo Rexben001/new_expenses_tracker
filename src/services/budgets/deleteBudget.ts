@@ -20,6 +20,31 @@ export const deleteBudget = async ({
     };
   }
 
+  await deleteExpensesByBudget({
+    dbService,
+    userId,
+    budgetId,
+    subAccountId,
+  });
+  // Optionally, delete associated expenses if needed
+  //   await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}#EXPENSE#`);
+
+  return successResponse({
+    message: "Budget deleted successfully",
+  });
+};
+
+export async function deleteExpensesByBudget({
+  dbService,
+  userId,
+  budgetId,
+  subAccountId,
+}: {
+  dbService: DbService;
+  userId: string;
+  budgetId: string;
+  subAccountId?: string;
+}) {
   const pk = createPk(userId, subAccountId);
   const sk = `BUDGET#${budgetId}`;
 
@@ -30,11 +55,4 @@ export const deleteBudget = async ({
   });
 
   await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}`, `EXPENSE#`);
-
-  // Optionally, delete associated expenses if needed
-  //   await dbService.deleteItemsByPrefix(`${pk}#BUDGET#${budgetId}#EXPENSE#`);
-
-  return successResponse({
-    message: "Budget deleted successfully",
-  });
-};
+}
