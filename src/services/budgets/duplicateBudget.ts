@@ -72,7 +72,7 @@ export const duplicateBudget = async ({
         ...expense,
         id: null,
         title: `${expense.title}`,
-        updatedAt: new Date().toISOString().split("T")[0],
+        updatedAt: new Date().toISOString(),
         budgetId: budgetIdForExpenses,
         upcoming: true,
         favorite: false,
