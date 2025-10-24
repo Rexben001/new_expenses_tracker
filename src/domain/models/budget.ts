@@ -34,7 +34,7 @@ export const BudgetRequestSchema = z.object({
   updatedAt: z.string().optional(),
   upcoming: z.boolean().optional().default(false),
   favorite: z.boolean().default(false),
-  subAccountId: z.string().uuid().optional(),
+  subAccountId: z.any().optional(),
 
   // Optional category field
 });
