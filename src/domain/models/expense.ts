@@ -13,7 +13,7 @@ export const ExpenseSchema = z.object({
   userId: z.string().uuid().optional(),
   upcoming: z.boolean().default(false),
   favorite: z.boolean().default(false),
-  subAccountId: z.string().uuid().optional(),
+  subAccountId: z.any().optional(),
   budgetId: z.string().uuid().optional(),
 });
 export type Expense = z.infer<typeof ExpenseSchema>;
@@ -29,6 +29,6 @@ export const ExpenseRequestSchema = z.object({
   updatedAt: z.string().optional(),
   upcoming: z.boolean().optional().default(false),
   favorite: z.boolean().default(false),
-  subAccountId: z.string().uuid().optional(),
+  subAccountId: z.any().optional(),
 });
 export type ExpenseRequest = z.infer<typeof ExpenseRequestSchema>;

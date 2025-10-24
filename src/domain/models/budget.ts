@@ -17,7 +17,7 @@ export const BudgetSchema = z.object({
   category: z.string().optional(),
   upcoming: z.boolean().default(false),
   favorite: z.boolean().default(false),
-  subAccountId: z.string().uuid().optional(),
+  subAccountId: z.any().optional(),
 });
 export type Budget = z.infer<typeof BudgetSchema>;
 
