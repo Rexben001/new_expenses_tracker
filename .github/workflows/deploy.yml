@@ -24,7 +24,7 @@ jobs:
       - name: Install AWS CDK
         run: npm install -g aws-cdk
 
-      - name: Set environment variables
+      - name: Set environment
         id: set-env
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
@@ -33,7 +33,7 @@ jobs:
             echo "env_name=test" >> $GITHUB_OUTPUT
           fi
 
-      # ✅ Properly configure AWS credentials
+      # ✅ Proper AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
