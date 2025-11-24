@@ -3,7 +3,7 @@ name: Deploy CDK Stack
 on:
   push:
     branches:
-      - '**' # run on all branches
+      - '**'
 
 jobs:
   deploy:
@@ -24,7 +24,6 @@ jobs:
       - name: Install AWS CDK
         run: npm install -g aws-cdk
 
-      # Determine environment and AWS credentials dynamically
       - name: Set environment variables
         id: set-env
         run: |
@@ -34,16 +33,16 @@ jobs:
             echo "env_name=test" >> $GITHUB_OUTPUT
           fi
 
+      # ✅ Properly configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
       - name: CDK Bootstrap
         run: cdk bootstrap
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-1
 
       - name: Deploy CDK Stack
-        run: cdk deploy --require-approval never --outputs-file cdk-outputs.json
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-1
+        run: cdk deploy --require-approval never --context env=${{ steps.set-env.outputs.env_name }} --outputs-file cdk-outputs.json
