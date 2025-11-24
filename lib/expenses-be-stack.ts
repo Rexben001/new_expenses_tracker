@@ -69,10 +69,32 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
+    const handleRecurringBudgetsLambda = new NodejsFunction(
+      this,
+      "HandleRecurringBudgetsFn",
+      {
+        runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+        entry: path.join(__dirname, "../src/handlers/handleRecurring/index.ts"),
+        handler: "handler",
+        environment: {
+          TABLE_NAME: table.tableName,
+        },
+      }
+    );
+
+    const rule = new cdk.aws_events.Rule(this, "RecurringBudgetsEventRule", {
+      schedule: cdk.aws_events.Schedule.cron({ minute: "0", hour: "0" }), // every day at midnight UTC
+    });
+
+    rule.addTarget(
+      new cdk.aws_events_targets.LambdaFunction(handleRecurringBudgetsLambda)
+    );
+
     // Grant the Lambda function permissions to read and write to the DynamoDB table
     table.grantReadWriteData(handleExpensesLambda);
     table.grantReadWriteData(handleBudgetsLambda);
     table.grantReadWriteData(handleUsersLambda);
+    table.grantReadWriteData(handleRecurringBudgetsLambda);
 
     const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
       userPoolName: "expenses-user-pool",

@@ -14,6 +14,7 @@ export interface DbService {
   queryItems(
     keyConditionExpression: string,
     expressionAttributeValues: Record<string, any>,
+    filterExpression?: string,
     indexName?: string
   ): Promise<Record<string, any>[]>;
   updateItem(
@@ -60,12 +61,14 @@ export function makeDbService(
     async queryItems(
       keyConditionExpression: string,
       expressionAttributeValues: Record<string, any>,
+      filterExpression?: string,
       indexName?: string
     ) {
       const command = new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: keyConditionExpression,
         ExpressionAttributeValues: expressionAttributeValues,
+        ...(filterExpression && { FilterExpression: filterExpression }),
         ...(indexName && { IndexName: indexName }),
       });
       const response = await client.send(command);

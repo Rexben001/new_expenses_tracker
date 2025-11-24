@@ -18,6 +18,8 @@ export const BudgetSchema = z.object({
   upcoming: z.boolean().default(false),
   favorite: z.boolean().default(false),
   subAccountId: z.any().optional(),
+  oldBudgetId: z.string().uuid().optional(),
+  isRecurring: z.boolean().default(false),
 });
 export type Budget = z.infer<typeof BudgetSchema>;
 
@@ -35,5 +37,6 @@ export const BudgetRequestSchema = z.object({
   upcoming: z.boolean().optional().default(false),
   favorite: z.boolean().default(false),
   subAccountId: z.any().optional(),
+  isRecurring: z.boolean().default(false),
 });
 export type BudgetRequest = z.infer<typeof BudgetRequestSchema>;

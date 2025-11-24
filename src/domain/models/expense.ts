@@ -15,6 +15,7 @@ export const ExpenseSchema = z.object({
   favorite: z.boolean().default(false),
   subAccountId: z.any().optional(),
   budgetId: z.string().uuid().optional(),
+  isRecurring: z.boolean().default(false),
 });
 export type Expense = z.infer<typeof ExpenseSchema>;
 
@@ -30,5 +31,6 @@ export const ExpenseRequestSchema = z.object({
   upcoming: z.boolean().optional().default(false),
   favorite: z.boolean().default(false),
   subAccountId: z.any().optional(),
+  isRecurring: z.boolean().default(false),
 });
 export type ExpenseRequest = z.infer<typeof ExpenseRequestSchema>;

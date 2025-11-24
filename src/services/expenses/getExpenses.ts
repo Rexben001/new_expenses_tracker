@@ -29,6 +29,7 @@ export const getExpenses = async ({
         ":user": { S: createPk(userId, subAccountId) },
         ":prefix": { S: "EXPENSE#" },
       },
+      undefined,
       indexName
     );
 
