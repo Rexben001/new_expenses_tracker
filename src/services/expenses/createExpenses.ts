@@ -43,7 +43,7 @@ export const createExpenses = async ({
     userId,
     id: _expenseId,
     category,
-    updatedAt: new Date().toISOString().split("T")[0],
+    updatedAt: parsedBody.updatedAt ?? new Date().toISOString().split("T")[0],
     budgetId: budgetId ?? undefined,
     subAccountId: subAccountId ?? undefined,
   };

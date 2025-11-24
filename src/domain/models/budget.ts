@@ -35,7 +35,5 @@ export const BudgetRequestSchema = z.object({
   upcoming: z.boolean().optional().default(false),
   favorite: z.boolean().default(false),
   subAccountId: z.any().optional(),
-
-  // Optional category field
 });
 export type BudgetRequest = z.infer<typeof BudgetRequestSchema>;
