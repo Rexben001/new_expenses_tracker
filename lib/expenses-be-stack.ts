@@ -23,10 +23,6 @@ export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, {
       ...props,
-      env: {
-        account: "655187298276",
-        region: "eu-west-1",
-      },
     });
 
     const table = new Table(this, "BudgetAppTable", {

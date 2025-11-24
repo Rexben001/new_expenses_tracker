@@ -3,33 +3,37 @@ name: Deploy CDK Stack
 on:
   push:
     branches:
-      - main # Deploy only when changes are pushed to the main branch
+      - '**' # run on all branches
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: main # Optional: specify the environment for deployment
 
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      # Install AWS CDK
       - name: Install AWS CDK
         run: npm install -g aws-cdk
 
-      # Bootstrap CDK (if required)
+      # Determine environment and AWS credentials dynamically
+      - name: Set environment variables
+        id: set-env
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "env_name=prod" >> $GITHUB_OUTPUT
+          else
+            echo "env_name=test" >> $GITHUB_OUTPUT
+          fi
+
       - name: CDK Bootstrap
         run: cdk bootstrap
         env:
@@ -37,9 +41,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-1
 
-      # Deploy the CDK stack
       - name: Deploy CDK Stack
-        run: cdk deploy --require-approval never
+        run: cdk deploy --require-approval never --outputs-file cdk-outputs.json
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
