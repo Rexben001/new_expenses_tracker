@@ -22,6 +22,7 @@ export function generateNextMonthRecurringBudgets(
   recurringBudgets: Budget[]
 ): Budget[] {
   const today = new Date();
+
   return recurringBudgets
     .filter((budget) => {
       if (!budget.isRecurring) return false;
@@ -35,6 +36,8 @@ export function generateNextMonthRecurringBudgets(
       updatedAt: addMonths(parseISO(budget.updatedAt), 1)
         .toISOString()
         .split("T")[0],
+      subAccountId: budget.subAccountId ?? undefined,
+      userId: budget.userId, // ✅ ensure userId remains
     }));
 }
 
