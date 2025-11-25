@@ -256,10 +256,20 @@ export async function processRecurringDataForUser(
       budgetInstances,
     });
 
+    const scopedInstances = budgetInstances.map((b) => ({
+      ...b,
+      subAccountId: b.subAccountId ?? subId,
+      userId: b.userId ?? userId,
+    }));
+
+    console.log(`✅ Generated new budget instances for ${subId}:`, {
+      scopedInstances,
+    });
+
     console.log(`💾 Saving budget instances for sub-account ${subId}`);
     const savedBudgets = await saveBudgetInstancesToDb(
       dbService,
-      budgetInstances
+      scopedInstances
     );
     console.log(
       `✅ Saved ${savedBudgets.length} budgets for sub-account ${subId}`
