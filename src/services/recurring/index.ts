@@ -51,6 +51,10 @@ export async function generateRecurringExpensesForNewBudgets(
   const today = new Date();
   const allNewExpenses: Expense[] = [];
 
+  console.log({
+    oldToNewBudgetMap,
+  });
+
   for (const [oldBudgetId, newBudgetId] of Object.entries(oldToNewBudgetMap)) {
     const recurringExpenses = await getRecurringExpensesForBudget(
       dbService,
@@ -58,6 +62,12 @@ export async function generateRecurringExpensesForNewBudgets(
       oldBudgetId,
       subAccountId
     );
+
+    console.log({
+      oldBudgetId,
+      newBudgetId,
+      recurringExpenses,
+    });
 
     const newExpenseInstances = recurringExpenses
       .filter((e) => {
