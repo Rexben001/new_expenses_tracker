@@ -95,12 +95,13 @@ export const getRecurringBudgets = async (
   subAccountId?: string
 ) => {
   const pk = createPk(userId, subAccountId);
+
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",
     {
       ":pk": { S: pk },
       ":skPrefix": { S: "BUDGET#" },
-      ":isRecurring": { B: true },
+      ":isRecurring": { BOOL: true },
     },
     "isRecurring = :isRecurring"
   );
@@ -120,7 +121,7 @@ export const getRecurringExpensesForBudget = async (
     {
       ":pk": { S: pk },
       ":skPrefix": { S: "EXPENSE#" },
-      ":isRecurring": { B: true },
+      ":isRecurring": { BOOL: true },
     },
     "isRecurring = :isRecurring"
   );
@@ -168,7 +169,9 @@ export async function processRecurringDataForUser(
   });
 
   console.log("🧮 Generating next month’s recurring budgets for main account");
-  const mainBudgetInstances = generateNextMonthRecurringBudgets(mainBudgets);
+  const mainBudgetInstances = generateNextMonthRecurringBudgets(
+    mainBudgets as Budget[]
+  );
   console.log("✅ Generated new budget instances:", {
     count: mainBudgetInstances.length,
   });
@@ -204,13 +207,19 @@ export async function processRecurringDataForUser(
   // 🟣 SUB-ACCOUNT LEVEL
   for (const subId of subAccountIds) {
     console.log(`📘 Fetching recurring budgets for sub-account ${subId}`);
-    const recurringBudgets = await getRecurringBudgets(dbService, userId, subId);
+    const recurringBudgets = await getRecurringBudgets(
+      dbService,
+      userId,
+      subId
+    );
     console.log(`✅ Budgets fetched for sub-account ${subId}:`, {
       count: recurringBudgets.length,
     });
 
     console.log(`🧮 Generating next month’s budgets for sub-account ${subId}`);
-    const budgetInstances = generateNextMonthRecurringBudgets(recurringBudgets);
+    const budgetInstances = generateNextMonthRecurringBudgets(
+      recurringBudgets as Budget[]
+    );
     console.log(`✅ Generated new budget instances for ${subId}:`, {
       count: budgetInstances.length,
     });
@@ -220,7 +229,9 @@ export async function processRecurringDataForUser(
       dbService,
       budgetInstances
     );
-    console.log(`✅ Saved ${savedBudgets.length} budgets for sub-account ${subId}`);
+    console.log(
+      `✅ Saved ${savedBudgets.length} budgets for sub-account ${subId}`
+    );
 
     const budgetMap = Object.fromEntries(
       savedBudgets.map((b: any) => [b.oldBudgetId, b.id])
@@ -234,7 +245,9 @@ export async function processRecurringDataForUser(
       userId,
       subId
     );
-    console.log(`✅ Created ${newExpenses.length} recurring expenses for ${subId}`);
+    console.log(
+      `✅ Created ${newExpenses.length} recurring expenses for ${subId}`
+    );
 
     allResults.push({
       scope: subId,
