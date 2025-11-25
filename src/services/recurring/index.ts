@@ -220,12 +220,14 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
 async function getAllUsersWithSubAccounts(dbService: DbService) {
   // 1️⃣ Get all user profiles
   const profiles = await dbService.queryItems(
-    "begins_with(PK, :pkPrefix) AND SK = :sk",
+    "begins_with(PK, :pkPrefix) AND begins_with(SK, :sk)",
     {
       ":pkPrefix": { S: "USER#" },
       ":sk": { S: "PROFILE#" },
     }
   );
+
+  console.log({ profiles });
 
   const users: any[] = [];
 
