@@ -32,7 +32,9 @@ export function generateNextMonthRecurringBudgets(
     .map((budget) => ({
       ...budget,
       oldBudgetId: budget.id,
-      updatedAt: addMonths(parseISO(budget.updatedAt), 1).toISOString(),
+      updatedAt: addMonths(parseISO(budget.updatedAt), 1)
+        .toISOString()
+        .split("T")[0],
     }));
 }
 
@@ -61,13 +63,36 @@ export async function generateRecurringExpensesForNewBudgets(
       .filter((e) => {
         if (!e.isRecurring) return false;
         const lastUpdated = parseISO(e.updatedAt);
+
+        // Normalize both to date-only strings to avoid timezone mismatches
+        const todayDate = formatISO(today, { representation: "date" });
+        const nextMonthDate = formatISO(addMonths(lastUpdated, 1), {
+          representation: "date",
+        });
+
         const monthDiff = differenceInCalendarMonths(today, lastUpdated);
-        return monthDiff === 1 && isSameDay(today, addMonths(lastUpdated, 1));
+        const isExactDateMatch = todayDate === nextMonthDate;
+
+        return monthDiff === 1 && isExactDateMatch;
       })
       .map((expense) => ({
         ...expense,
-        updatedAt: addMonths(parseISO(expense.updatedAt), 1).toISOString(),
+        updatedAt: addMonths(parseISO(expense.updatedAt), 1)
+          .toISOString()
+          .split("T")[0],
         budgetId: newBudgetId,
+        // Ensure all required fields are present
+        id: expense.id,
+        title: expense.title,
+        amount: expense.amount,
+        currency: expense.currency,
+        upcoming: expense.upcoming,
+        favorite: expense.favorite,
+        isRecurring: expense.isRecurring,
+        description: expense.description,
+        userId: expense.userId,
+        category: expense.category,
+        subAccountId: expense.subAccountId,
       }));
 
     await Promise.all(
