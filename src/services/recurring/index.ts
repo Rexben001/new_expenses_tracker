@@ -138,8 +138,8 @@ async function saveBudgetInstancesToDb(
 
 async function getAllUsers(dbService: DbService) {
   return dbService.queryItems("begins_with(PK, :pkPrefix) AND SK = :sk", {
-    ":pkPrefix": "USER#",
-    ":sk": "PROFILE#",
+    ":pkPrefix": { S: "USER#" },
+    ":sk": { S: "PROFILE#" },
   });
 }
 
@@ -200,7 +200,7 @@ export async function processRecurringDataForUser(
    5️⃣  Orchestrate for All Users (Nightly Cron)
 --------------------------------------------------------- */
 export async function processMonthlyRecurringJob(dbService: DbService) {
-  const users = await getAllUsers(dbService);
+  const users = await getAllUsersWithSubAccounts(dbService);
   const report: any[] = [];
 
   console.log("users:", users);
@@ -215,4 +215,39 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
     JSON.stringify(report, null, 2)
   );
   return report;
+}
+
+async function getAllUsersWithSubAccounts(dbService: DbService) {
+  // 1️⃣ Get all user profiles
+  const profiles = await dbService.queryItems(
+    "begins_with(PK, :pkPrefix) AND SK = :sk",
+    {
+      ":pkPrefix": { S: "USER#" },
+      ":sk": { S: "PROFILE#" },
+    }
+  );
+
+  const users: any[] = [];
+
+  // 2️⃣ For each profile, fetch its sub-accounts
+  for (const profile of profiles) {
+    const userId = profile.SK.split("#")[1];
+    const pk = `USER#${userId}`;
+
+    const subAccounts = await dbService.queryItems(
+      "PK = :pk AND begins_with(SK, :skPrefix)",
+      {
+        ":pk": { S: pk },
+        ":skPrefix": { S: "SUB#" },
+      }
+    );
+
+    users.push({
+      id: userId,
+      profile: profile,
+      subAccounts,
+    });
+  }
+
+  return users;
 }
