@@ -152,69 +152,99 @@ export async function processRecurringDataForUser(
   user: User
 ) {
   const userId = user.id;
-  const subAccountIds = user.subAccounts?.map((s) => s.id) ?? [];
+  const subAccountIds = user.subAccounts?.map((s) => s.subAccountId) ?? [];
   const allResults: any[] = [];
 
-  const accounts = [undefined, ...subAccountIds];
+  console.log("🚀 Starting recurring data processing for user:", {
+    userId,
+    totalSubAccounts: subAccountIds.length,
+  });
 
-  console.log({ accounts, userId });
+  // 🟢 MAIN USER LEVEL
+  console.log("📘 Fetching main recurring budgets for user:", userId);
+  const mainBudgets = await getRecurringBudgets(dbService, userId);
+  console.log("✅ Main recurring budgets fetched:", {
+    count: mainBudgets.length,
+  });
 
-  for (const subId of accounts) {
-    // Step 1: Get recurring budgets
-    const recurringBudgets = await getRecurringBudgets(
-      dbService,
-      userId,
-      subId
-    );
+  console.log("🧮 Generating next month’s recurring budgets for main account");
+  const mainBudgetInstances = generateNextMonthRecurringBudgets(mainBudgets);
+  console.log("✅ Generated new budget instances:", {
+    count: mainBudgetInstances.length,
+  });
 
-    console.log({
-      recurringBudgets,
+  console.log("💾 Saving main budget instances to DB");
+  const savedMainBudgets = await saveBudgetInstancesToDb(
+    dbService,
+    mainBudgetInstances
+  );
+  console.log("✅ Saved main budgets:", { count: savedMainBudgets.length });
+
+  const mainBudgetMap = Object.fromEntries(
+    savedMainBudgets.map((b: any) => [b.oldBudgetId, b.id])
+  );
+  console.log("🗺️ Main budget old→new ID map created:", mainBudgetMap);
+
+  console.log("💰 Generating recurring expenses for main budgets");
+  const mainExpenses = await generateRecurringExpensesForNewBudgets(
+    dbService,
+    mainBudgetMap,
+    userId
+  );
+  console.log("✅ Main recurring expenses created:", {
+    count: mainExpenses.length,
+  });
+
+  allResults.push({
+    scope: "main",
+    budgetsCreated: savedMainBudgets.length,
+    expensesCreated: mainExpenses.length,
+  });
+
+  // 🟣 SUB-ACCOUNT LEVEL
+  for (const subId of subAccountIds) {
+    console.log(`📘 Fetching recurring budgets for sub-account ${subId}`);
+    const recurringBudgets = await getRecurringBudgets(dbService, userId, subId);
+    console.log(`✅ Budgets fetched for sub-account ${subId}:`, {
+      count: recurringBudgets.length,
     });
 
-    // Step 2: Generate and save next-month budgets
-    const budgetInstances = generateNextMonthRecurringBudgets(
-      recurringBudgets as Budget[]
-    );
-
-    console.log({
-      budgetInstances,
+    console.log(`🧮 Generating next month’s budgets for sub-account ${subId}`);
+    const budgetInstances = generateNextMonthRecurringBudgets(recurringBudgets);
+    console.log(`✅ Generated new budget instances for ${subId}:`, {
+      count: budgetInstances.length,
     });
+
+    console.log(`💾 Saving budget instances for sub-account ${subId}`);
     const savedBudgets = await saveBudgetInstancesToDb(
       dbService,
       budgetInstances
     );
+    console.log(`✅ Saved ${savedBudgets.length} budgets for sub-account ${subId}`);
 
-    console.log({
-      savedBudgets,
-    });
-
-    // Step 3: Build old → new map
     const budgetMap = Object.fromEntries(
       savedBudgets.map((b: any) => [b.oldBudgetId, b.id])
     );
+    console.log(`🗺️ Budget map for sub-account ${subId}:`, budgetMap);
 
-    console.log({
-      budgetMap,
-    });
-
-    // Step 4: Generate and save expenses linked to new budgets
+    console.log(`💰 Generating recurring expenses for sub-account ${subId}`);
     const newExpenses = await generateRecurringExpensesForNewBudgets(
       dbService,
       budgetMap,
       userId,
       subId
     );
-
-    console.log({
-      newExpenses,
-    });
+    console.log(`✅ Created ${newExpenses.length} recurring expenses for ${subId}`);
 
     allResults.push({
-      subId,
-      newBudgets: savedBudgets.length,
-      newExpenses: newExpenses.length,
+      scope: subId,
+      budgetsCreated: savedBudgets.length,
+      expensesCreated: newExpenses.length,
     });
   }
+
+  console.log("🎯 Recurring job summary:", allResults);
+  console.log("✅ Recurring data processing completed for user:", userId);
 
   return allResults;
 }
