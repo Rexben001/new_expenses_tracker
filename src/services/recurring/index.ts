@@ -59,6 +59,10 @@ export async function generateRecurringExpensesForNewBudgets(
       subAccountId
     );
 
+    console.log({
+      recurringExpenses,
+    });
+
     const newExpenseInstances = recurringExpenses
       .filter((e) => {
         if (!e.isRecurring) return false;
