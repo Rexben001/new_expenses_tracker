@@ -4,6 +4,7 @@ import {
   DeleteItemCommand,
   PutItemCommand,
   QueryCommand,
+  ScanCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -25,6 +26,10 @@ export interface DbService {
   ): Promise<Record<string, any>>;
   deleteItem(key: Record<string, any>): Promise<void>;
   deleteItemsByPrefix(partitionKey: string, prefix: string): Promise<void>;
+  scanItems(
+    filterExpression: string,
+    expressionValues: Record<string, any>
+  ): Promise<Record<string, any>[]>;
 }
 
 export function makeDbService(
@@ -110,6 +115,23 @@ export function makeDbService(
     },
 
     // async deleteBatchItem(ke)
+
+    async scanItems(
+      filterExpression: string,
+      expressionValues: Record<string, any>
+    ) {
+      const params = new ScanCommand({
+        TableName: tableName,
+        FilterExpression: filterExpression,
+        ExpressionAttributeValues: expressionValues,
+      });
+
+      const response = await client.send(params);
+      if (!response.Items || response.Items.length === 0) {
+        return [];
+      }
+      return response.Items.map((item) => unmarshall(item));
+    },
 
     async deleteItemsByPrefix(
       partitionKey: string,

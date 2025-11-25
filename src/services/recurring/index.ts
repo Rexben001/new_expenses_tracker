@@ -218,20 +218,15 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
 }
 
 async function getAllUsersWithSubAccounts(dbService: DbService) {
-  // 1️⃣ Get all user profiles
-  const profiles = await dbService.queryItems(
-    "begins_with(PK, :pkPrefix) AND begins_with(SK, :sk)",
-    {
-      ":pkPrefix": { S: "USER#" },
-      ":sk": { S: "PROFILE#" },
-    }
-  );
+  // 1️⃣ Get all PROFILE# items
+  const profiles = await dbService.scanItems("begins_with(SK, :skPrefix)", {
+    ":skPrefix": "PROFILE#",
+  });
 
   console.log({ profiles });
 
   const users: any[] = [];
 
-  // 2️⃣ For each profile, fetch its sub-accounts
   for (const profile of profiles) {
     const userId = profile.SK.split("#")[1];
     const pk = `USER#${userId}`;
@@ -244,9 +239,13 @@ async function getAllUsersWithSubAccounts(dbService: DbService) {
       }
     );
 
+    console.log({
+      subAccounts,
+    });
+
     users.push({
       id: userId,
-      profile: profile,
+      profile,
       subAccounts,
     });
   }
