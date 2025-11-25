@@ -51,10 +51,6 @@ export async function generateRecurringExpensesForNewBudgets(
   const today = new Date();
   const allNewExpenses: Expense[] = [];
 
-  console.log({
-    oldToNewBudgetMap,
-  });
-
   for (const [oldBudgetId, newBudgetId] of Object.entries(oldToNewBudgetMap)) {
     const recurringExpenses = await getRecurringExpensesForBudget(
       dbService,
@@ -62,12 +58,6 @@ export async function generateRecurringExpensesForNewBudgets(
       oldBudgetId,
       subAccountId
     );
-
-    console.log({
-      oldBudgetId,
-      newBudgetId,
-      recurringExpenses,
-    });
 
     const newExpenseInstances = recurringExpenses
       .filter((e) => {
@@ -201,32 +191,17 @@ export async function processRecurringDataForUser(
   const subAccountIds = user.subAccounts?.map((s) => s.subAccountId) ?? [];
   const allResults: any[] = [];
 
-  console.log("🚀 Starting recurring data processing for user:", {
-    userId,
-    totalSubAccounts: subAccountIds.length,
-  });
-
   // 🟢 MAIN USER LEVEL
-  console.log("📘 Fetching main recurring budgets for user:", userId);
   const mainBudgets = await getRecurringBudgets(dbService, userId);
-  console.log("✅ Main recurring budgets fetched:", {
-    count: mainBudgets.length,
-  });
 
-  console.log("🧮 Generating next month’s recurring budgets for main account");
   const mainBudgetInstances = generateNextMonthRecurringBudgets(
     mainBudgets as Budget[]
   );
-  console.log("✅ Generated new budget instances:", {
-    count: mainBudgetInstances.length,
-  });
 
-  console.log("💾 Saving main budget instances to DB");
   const savedMainBudgets = await saveBudgetInstancesToDb(
     dbService,
     mainBudgetInstances
   );
-  console.log("✅ Saved main budgets:", { count: savedMainBudgets.length });
 
   const mainBudgetMap = Object.fromEntries(
     savedMainBudgets.map((b: any) => [b.oldBudgetId, b.id])
@@ -338,8 +313,6 @@ async function getAllUsersWithSubAccounts(dbService: DbService) {
     ":skPrefix": { S: "PROFILE#" },
   });
 
-  console.log({ profiles });
-
   const users: any[] = [];
 
   for (const profile of profiles) {
@@ -353,10 +326,6 @@ async function getAllUsersWithSubAccounts(dbService: DbService) {
         ":skPrefix": { S: "SUB#" },
       }
     );
-
-    console.log({
-      subAccounts,
-    });
 
     users.push({
       id: userId,
