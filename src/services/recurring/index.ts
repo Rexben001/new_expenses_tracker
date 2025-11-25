@@ -245,7 +245,7 @@ export async function processRecurringDataForUser(
       subId
     );
     console.log(`✅ Budgets fetched for sub-account ${subId}:`, {
-      count: recurringBudgets.length,
+      recurringBudgets,
     });
 
     console.log(`🧮 Generating next month’s budgets for sub-account ${subId}`);
@@ -253,7 +253,7 @@ export async function processRecurringDataForUser(
       recurringBudgets as Budget[]
     );
     console.log(`✅ Generated new budget instances for ${subId}:`, {
-      count: budgetInstances.length,
+      budgetInstances,
     });
 
     console.log(`💾 Saving budget instances for sub-account ${subId}`);
