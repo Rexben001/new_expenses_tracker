@@ -97,7 +97,11 @@ export const getRecurringBudgets = async (
   const pk = createPk(userId, subAccountId);
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",
-    { ":pk": pk, ":skPrefix": "BUDGET#", ":isRecurring": true },
+    {
+      ":pk": { S: pk },
+      ":skPrefix": { S: "BUDGET#" },
+      ":isRecurring": { B: true },
+    },
     "isRecurring = :isRecurring"
   );
 };
@@ -113,7 +117,11 @@ export const getRecurringExpensesForBudget = async (
   }#BUDGET#${budgetId}`;
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",
-    { ":pk": pk, ":skPrefix": "EXPENSE#", ":isRecurring": true },
+    {
+      ":pk": { S: pk },
+      ":skPrefix": { S: "EXPENSE#" },
+      ":isRecurring": { B: true },
+    },
     "isRecurring = :isRecurring"
   );
 };
@@ -136,13 +144,6 @@ async function saveBudgetInstancesToDb(
   );
 }
 
-async function getAllUsers(dbService: DbService) {
-  return dbService.queryItems("begins_with(PK, :pkPrefix) AND SK = :sk", {
-    ":pkPrefix": { S: "USER#" },
-    ":sk": { S: "PROFILE#" },
-  });
-}
-
 /* ---------------------------------------------------------
    4️⃣  Run for One User (Budgets + Expenses)
 --------------------------------------------------------- */
@@ -156,6 +157,8 @@ export async function processRecurringDataForUser(
 
   const accounts = [undefined, ...subAccountIds];
 
+  console.log({ accounts, userId });
+
   for (const subId of accounts) {
     // Step 1: Get recurring budgets
     const recurringBudgets = await getRecurringBudgets(
@@ -164,19 +167,35 @@ export async function processRecurringDataForUser(
       subId
     );
 
+    console.log({
+      recurringBudgets,
+    });
+
     // Step 2: Generate and save next-month budgets
     const budgetInstances = generateNextMonthRecurringBudgets(
       recurringBudgets as Budget[]
     );
+
+    console.log({
+      budgetInstances,
+    });
     const savedBudgets = await saveBudgetInstancesToDb(
       dbService,
       budgetInstances
     );
 
+    console.log({
+      savedBudgets,
+    });
+
     // Step 3: Build old → new map
     const budgetMap = Object.fromEntries(
       savedBudgets.map((b: any) => [b.oldBudgetId, b.id])
     );
+
+    console.log({
+      budgetMap,
+    });
 
     // Step 4: Generate and save expenses linked to new budgets
     const newExpenses = await generateRecurringExpensesForNewBudgets(
@@ -185,6 +204,10 @@ export async function processRecurringDataForUser(
       userId,
       subId
     );
+
+    console.log({
+      newExpenses,
+    });
 
     allResults.push({
       subId,
@@ -207,6 +230,10 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
 
   for (const user of users) {
     const result = await processRecurringDataForUser(dbService, user as User);
+
+    console.log({
+      result,
+    });
     report.push({ userId: (user as User).id, details: result });
   }
 
