@@ -154,6 +154,8 @@ export const getRecurringExpensesForBudget = async (
     representation: "date",
   });
 
+  console.log({ pk });
+
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",
     {
