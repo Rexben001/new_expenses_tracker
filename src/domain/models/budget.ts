@@ -5,9 +5,11 @@ export const BudgetSchema = z.object({
   title: z.string().min(1, "Title is required"),
   amount: z.number().positive("Amount must be a positive number"),
   description: z.string().optional(),
-  period: z.enum(["monthly", "yearly"], {
-    message: 'Period must be either "monthly" or "yearly"',
-  }),
+  period: z
+    .enum(["monthly", "yearly"], {
+      message: 'Period must be either "monthly" or "yearly"',
+    })
+    .optional(),
   createdAt: z.string().optional(),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid(),
@@ -27,9 +29,11 @@ export const BudgetRequestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   amount: z.number().positive("Amount must be a positive number"),
   description: z.string().optional(),
-  period: z.enum(["monthly", "yearly"], {
-    message: 'Period must be either "monthly" or "yearly"',
-  }),
+  period: z
+    .enum(["monthly", "yearly"], {
+      message: 'Period must be either "monthly" or "yearly"',
+    })
+    .optional(),
   currency: z.string().min(1, "Currency is required"),
   userId: z.string().uuid().optional(),
   category: z.string().optional(),
