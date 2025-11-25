@@ -13,11 +13,13 @@ import { createBudgetOnly } from "../budgets/createBudget";
 import { createExpenses } from "../expenses/createExpenses";
 import { createExpensesPk, createPk } from "../../utils/createPk";
 import { User } from "../../domain/models/user";
+import {
+  getRecurringExpensesForBudget,
+  getRecurringBudgets,
+  saveBudgetInstancesToDb,
+  getAllUsersWithSubAccounts,
+} from "./dbQuery";
 
-/* ---------------------------------------------------------
-   1️⃣  Generate Next-Month Budgets
-   → Only create if last updated date is exactly 1 month behind today (same day)
---------------------------------------------------------- */
 export function generateNextMonthRecurringBudgets(
   recurringBudgets: Budget[]
 ): Budget[] {
@@ -38,6 +40,9 @@ export function generateNextMonthRecurringBudgets(
         .split("T")[0],
       subAccountId: budget.subAccountId ?? undefined,
       userId: budget.userId, // ✅ ensure userId remains
+      title: budget.title.endsWith(" (copy)")
+        ? budget.title
+        : `${budget.title} (copy)`,
     }));
 }
 
@@ -90,7 +95,9 @@ export async function generateRecurringExpensesForNewBudgets(
         budgetId: newBudgetId,
         // Ensure all required fields are present
         id: expense.id,
-        title: expense.title,
+        title: expense.title.endsWith(" (copy)")
+          ? expense.title
+          : `${expense.title} (copy)`,
         amount: expense.amount,
         currency: expense.currency,
         upcoming: expense.upcoming,
@@ -124,73 +131,6 @@ export async function generateRecurringExpensesForNewBudgets(
    3️⃣  DB Queries — Dynamic `updatedAt` filtering
    → Only fetch items where `updatedAt` equals cutoff date (1 month ago)
 --------------------------------------------------------- */
-export const getRecurringBudgets = async (
-  dbService: DbService,
-  userId: string,
-  subAccountId?: string
-) => {
-  const pk = createPk(userId, subAccountId);
-  console.log({
-    pk,
-  });
-  const cutoffDate = formatISO(subMonths(new Date(), 1), {
-    representation: "date",
-  }); // e.g. 2025-10-25
-
-  return dbService.queryItems(
-    "PK = :pk AND begins_with(SK, :skPrefix)",
-    {
-      ":pk": { S: pk },
-      ":skPrefix": { S: "BUDGET#" },
-      ":isRecurring": { BOOL: true },
-      ":cutoffDate": { S: cutoffDate },
-    },
-    "isRecurring = :isRecurring AND updatedAt = :cutoffDate"
-  );
-};
-
-export const getRecurringExpensesForBudget = async (
-  dbService: DbService,
-  userId: string,
-  budgetId: string,
-  subAccountId?: string
-) => {
-  const pk = createExpensesPk(userId, budgetId, subAccountId);
-  const cutoffDate = formatISO(subMonths(new Date(), 1), {
-    representation: "date",
-  });
-
-  console.log({ pk });
-
-  return dbService.queryItems(
-    "PK = :pk AND begins_with(SK, :skPrefix)",
-    {
-      ":pk": { S: pk },
-      ":skPrefix": { S: "EXPENSE#" },
-      ":isRecurring": { BOOL: true },
-      ":cutoffDate": { S: cutoffDate },
-    },
-    "isRecurring = :isRecurring AND updatedAt = :cutoffDate"
-  );
-};
-
-async function saveBudgetInstancesToDb(
-  dbService: DbService,
-  budgetInstances: Budget[]
-) {
-  if (budgetInstances.length === 0) return [];
-  return Promise.all(
-    budgetInstances.map((budget) =>
-      createBudgetOnly({
-        dbService,
-        body: JSON.stringify(budget),
-        userId: budget.userId,
-        subAccountId: budget.subAccountId,
-        oldBudgetId: budget.id,
-      })
-    )
-  );
-}
 
 /* ---------------------------------------------------------
    4️⃣  Run for One User (Budgets + Expenses)
@@ -260,6 +200,7 @@ export async function processRecurringDataForUser(
       ...b,
       subAccountId: b.subAccountId ?? subId,
       userId: b.userId ?? userId,
+      title: b.title.endsWith(" (copy)") ? b.title : `${b.title} (copy)`,
     }));
 
     console.log(`✅ Generated new budget instances for ${subId}:`, {
@@ -327,34 +268,4 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
     JSON.stringify(report, null, 2)
   );
   return report;
-}
-
-async function getAllUsersWithSubAccounts(dbService: DbService) {
-  // 1️⃣ Get all PROFILE# items
-  const profiles = await dbService.scanItems("begins_with(SK, :skPrefix)", {
-    ":skPrefix": { S: "PROFILE#" },
-  });
-
-  const users: any[] = [];
-
-  for (const profile of profiles) {
-    const userId = profile.SK.split("#")[1];
-    const pk = `USER#${userId}`;
-
-    const subAccounts = await dbService.queryItems(
-      "PK = :pk AND begins_with(SK, :skPrefix)",
-      {
-        ":pk": { S: pk },
-        ":skPrefix": { S: "SUB#" },
-      }
-    );
-
-    users.push({
-      id: userId,
-      profile,
-      subAccounts,
-    });
-  }
-
-  return users;
 }
