@@ -127,6 +127,9 @@ export const getRecurringBudgets = async (
   subAccountId?: string
 ) => {
   const pk = createPk(userId, subAccountId);
+  console.log({
+    pk,
+  });
   const cutoffDate = formatISO(subMonths(new Date(), 1), {
     representation: "date",
   }); // e.g. 2025-10-25
