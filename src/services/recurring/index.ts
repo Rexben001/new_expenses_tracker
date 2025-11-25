@@ -1,38 +1,44 @@
-import { addMonths, parseISO, isSameMonth } from "date-fns";
+import {
+  addMonths,
+  parseISO,
+  isSameDay,
+  differenceInCalendarMonths,
+  formatISO,
+  subMonths,
+} from "date-fns";
 import { Budget } from "../../domain/models/budget";
 import { Expense } from "../../domain/models/expense";
 import { DbService } from "../shared/dbService";
 import { createBudgetOnly } from "../budgets/createBudget";
 import { createExpenses } from "../expenses/createExpenses";
-import { createPk } from "../../utils/createPk";
+import { createExpensesPk, createPk } from "../../utils/createPk";
 import { User } from "../../domain/models/user";
 
 /* ---------------------------------------------------------
    1️⃣  Generate Next-Month Budgets
+   → Only create if last updated date is exactly 1 month behind today (same day)
 --------------------------------------------------------- */
 export function generateNextMonthRecurringBudgets(
   recurringBudgets: Budget[]
 ): Budget[] {
   const today = new Date();
   return recurringBudgets
-    .filter((budget) => budget.isRecurring)
-    .map((budget) => {
+    .filter((budget) => {
+      if (!budget.isRecurring) return false;
       const lastUpdated = parseISO(budget.updatedAt);
-      const nextMonth = addMonths(lastUpdated, 1);
-      if (isSameMonth(nextMonth, today)) {
-        return {
-          ...budget,
-          updatedAt: nextMonth.toISOString(),
-          oldBudgetId: budget.id,
-        };
-      }
-      return null;
+      const monthDiff = differenceInCalendarMonths(today, lastUpdated);
+      return monthDiff === 1 && isSameDay(today, addMonths(lastUpdated, 1));
     })
-    .filter(Boolean) as Budget[];
+    .map((budget) => ({
+      ...budget,
+      oldBudgetId: budget.id,
+      updatedAt: addMonths(parseISO(budget.updatedAt), 1).toISOString(),
+    }));
 }
 
 /* ---------------------------------------------------------
    2️⃣  Generate Next-Month Expenses (linked to new budgets)
+   → Same date rule applies to recurring expenses
 --------------------------------------------------------- */
 export async function generateRecurringExpensesForNewBudgets(
   dbService: DbService,
@@ -52,21 +58,17 @@ export async function generateRecurringExpensesForNewBudgets(
     );
 
     const newExpenseInstances = recurringExpenses
-      .filter((e) => e.isRecurring)
-      .map((expense) => {
-        const lastUpdated = parseISO(expense.updatedAt);
-        const nextMonth = addMonths(lastUpdated, 1);
-
-        if (isSameMonth(nextMonth, today)) {
-          return {
-            ...expense,
-            updatedAt: nextMonth.toISOString(),
-            budgetId: newBudgetId, // ✅ Link to new budget
-          };
-        }
-        return null;
+      .filter((e) => {
+        if (!e.isRecurring) return false;
+        const lastUpdated = parseISO(e.updatedAt);
+        const monthDiff = differenceInCalendarMonths(today, lastUpdated);
+        return monthDiff === 1 && isSameDay(today, addMonths(lastUpdated, 1));
       })
-      .filter(Boolean) as Expense[];
+      .map((expense) => ({
+        ...expense,
+        updatedAt: addMonths(parseISO(expense.updatedAt), 1).toISOString(),
+        budgetId: newBudgetId,
+      }));
 
     await Promise.all(
       newExpenseInstances.map((expense) =>
@@ -87,7 +89,8 @@ export async function generateRecurringExpensesForNewBudgets(
 }
 
 /* ---------------------------------------------------------
-   3️⃣  DB Helpers
+   3️⃣  DB Queries — Dynamic `updatedAt` filtering
+   → Only fetch items where `updatedAt` equals cutoff date (1 month ago)
 --------------------------------------------------------- */
 export const getRecurringBudgets = async (
   dbService: DbService,
@@ -95,6 +98,9 @@ export const getRecurringBudgets = async (
   subAccountId?: string
 ) => {
   const pk = createPk(userId, subAccountId);
+  const cutoffDate = formatISO(subMonths(new Date(), 1), {
+    representation: "date",
+  }); // e.g. 2025-10-25
 
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",
@@ -102,8 +108,9 @@ export const getRecurringBudgets = async (
       ":pk": { S: pk },
       ":skPrefix": { S: "BUDGET#" },
       ":isRecurring": { BOOL: true },
+      ":cutoffDate": { S: cutoffDate },
     },
-    "isRecurring = :isRecurring"
+    "isRecurring = :isRecurring AND updatedAt = :cutoffDate"
   );
 };
 
@@ -113,17 +120,20 @@ export const getRecurringExpensesForBudget = async (
   budgetId: string,
   subAccountId?: string
 ) => {
-  const pk = `USER#${userId}${
-    subAccountId ? `#SUB#${subAccountId}` : ""
-  }#BUDGET#${budgetId}`;
+  const pk = createExpensesPk(userId, budgetId, subAccountId);
+  const cutoffDate = formatISO(subMonths(new Date(), 1), {
+    representation: "date",
+  });
+
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",
     {
       ":pk": { S: pk },
       ":skPrefix": { S: "EXPENSE#" },
       ":isRecurring": { BOOL: true },
+      ":cutoffDate": { S: cutoffDate },
     },
-    "isRecurring = :isRecurring"
+    "isRecurring = :isRecurring AND updatedAt = :cutoffDate"
   );
 };
 
