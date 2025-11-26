@@ -65,7 +65,7 @@ export const updateBudgets = async ({
     });
 
     // Parallel updates (with concurrency control)
-    const res = await Promise.all(
+    await Promise.all(
       expenses.map((expense) =>
         dbService.updateItem(
           { PK: expense.PK, SK: expense.SK },
@@ -75,9 +75,6 @@ export const updateBudgets = async ({
         )
       )
     );
-    console.log({
-      res,
-    });
   }
 
   return successResponse({

@@ -79,12 +79,18 @@ export class ExpensesBeStack extends cdk.Stack {
     );
 
     const rule = new cdk.aws_events.Rule(this, "RecurringBudgetsEventRule", {
-      schedule: cdk.aws_events.Schedule.cron({ minute: "0", hour: "0" }), // every day at midnight UTC
+      // schedule: cdk.aws_events.Schedule.cron({ minute: "0", hour: "0" }), // every day at midnight UTC
+      schedule: cdk.aws_events.Schedule.rate(cdk.Duration.minutes(5)),
     });
 
     rule.addTarget(
       new cdk.aws_events_targets.LambdaFunction(handleRecurringBudgetsLambda)
     );
+
+    handleRecurringBudgetsLambda.addPermission("AllowEventBridgeInvoke", {
+      principal: new cdk.aws_iam.ServicePrincipal("events.amazonaws.com"),
+      sourceArn: rule.ruleArn,
+    });
 
     // Grant the Lambda function permissions to read and write to the DynamoDB table
     table.grantReadWriteData(handleExpensesLambda);

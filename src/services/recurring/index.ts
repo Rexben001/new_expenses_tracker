@@ -67,10 +67,6 @@ export async function generateRecurringExpensesForNewBudgets(
       subAccountId
     );
 
-    console.log({
-      recurringExpenses,
-    });
-
     const newExpenseInstances = recurringExpenses
       .filter((e) => {
         if (!e.isRecurring) return false;
@@ -257,9 +253,6 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
   for (const user of users) {
     const result = await processRecurringDataForUser(dbService, user as User);
 
-    console.log({
-      result,
-    });
     report.push({ userId: (user as User).id, details: result });
   }
 
