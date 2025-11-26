@@ -1,4 +1,4 @@
-import { createPk } from "../../utils/createPk";
+import { createExpensesPk, createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
@@ -48,27 +48,28 @@ export const updateBudgets = async ({
     expressionAttributeValues
   );
 
-  // If setIsRecurring is provided, update all the expenses under this budget
   if (setIsRecurring !== undefined) {
-    const expensesToUpdate = await dbService.queryItems(
+    const expensePk = createExpensesPk(userId, budgetId, subAccountId);
+
+    const expenses = await dbService.queryItems(
       "PK = :pk AND begins_with(SK, :skPrefix)",
       {
-        ":pk": `BUDGET#${budgetId}`,
-        ":skPrefix": "EXPENSE#",
+        ":pk": { S: expensePk },
+        ":skPrefix": { S: "EXPENSE#" },
       }
     );
 
-    for (const expense of expensesToUpdate) {
-      const expensePk = expense.PK;
-      const expenseSk = expense.SK;
-
-      dbService.updateItem(
-        { PK: expensePk, SK: expenseSk },
-        "SET #isRecurring = :isRecurring",
-        { "#isRecurring": "isRecurring" },
-        { ":isRecurring": { BOOL: false } }
-      );
-    }
+    // Parallel updates (with concurrency control)
+    await Promise.all(
+      expenses.map((expense) =>
+        dbService.updateItem(
+          { PK: expense.PK, SK: expense.SK },
+          "SET #isRecurring = :isRecurring",
+          { "#isRecurring": "isRecurring" },
+          { ":isRecurring": { BOOL: false } }
+        )
+      )
+    );
   }
 
   return successResponse({
