@@ -79,8 +79,7 @@ export class ExpensesBeStack extends cdk.Stack {
     );
 
     const rule = new cdk.aws_events.Rule(this, "RecurringBudgetsEventRule", {
-      // schedule: cdk.aws_events.Schedule.cron({ minute: "0", hour: "0" }), // every day at midnight UTC
-      schedule: cdk.aws_events.Schedule.rate(cdk.Duration.minutes(5)),
+      schedule: cdk.aws_events.Schedule.cron({ minute: "0", hour: "0" }), // every day at midnight UTC
     });
 
     rule.addTarget(
