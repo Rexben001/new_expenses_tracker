@@ -9,12 +9,14 @@ export const updateBudgets = async ({
   userId,
   budgetId,
   subAccountId,
+  setIsRecurring,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
   subAccountId?: string;
+  setIsRecurring?: string;
 }) => {
   if (!budgetId) {
     throw new Error("Budget ID is required for updating a budget");
@@ -45,6 +47,29 @@ export const updateBudgets = async ({
     expressionAttributeNames,
     expressionAttributeValues
   );
+
+  // If setIsRecurring is provided, update all the expenses under this budget
+  if (setIsRecurring !== undefined) {
+    const expensesToUpdate = await dbService.queryItems(
+      "PK = :pk AND begins_with(SK, :skPrefix)",
+      {
+        ":pk": `BUDGET#${budgetId}`,
+        ":skPrefix": "EXPENSE#",
+      }
+    );
+
+    for (const expense of expensesToUpdate) {
+      const expensePk = expense.PK;
+      const expenseSk = expense.SK;
+
+      dbService.updateItem(
+        { PK: expensePk, SK: expenseSk },
+        "SET #isRecurring = :isRecurring",
+        { "#isRecurring": "isRecurring" },
+        { ":isRecurring": false }
+      );
+    }
+  }
 
   return successResponse({
     message: "Budget updated successfully",
