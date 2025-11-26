@@ -66,7 +66,7 @@ export const updateBudgets = async ({
         { PK: expensePk, SK: expenseSk },
         "SET #isRecurring = :isRecurring",
         { "#isRecurring": "isRecurring" },
-        { ":isRecurring": false }
+        { ":isRecurring": { BOOL: false } }
       );
     }
   }
