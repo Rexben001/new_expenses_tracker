@@ -18,6 +18,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       const body = event.body ?? "";
       const onlyBudget = event.queryStringParameters?.only === "true";
       const subAccountId = event.queryStringParameters?.subId;
+      const setIsRecurring = event.queryStringParameters?.setIsRecurring;
 
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
@@ -57,6 +58,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             userId,
             budgetId,
             subAccountId,
+            setIsRecurring
           });
         case "DELETE":
           return await deleteBudget({

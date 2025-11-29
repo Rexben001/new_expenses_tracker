@@ -28,7 +28,7 @@ export const duplicateExpenses = async ({
   const body = JSON.stringify({
     ...expenses[0],
     id: null,
-    title: `${expenses[0].title} Copy`,
+    title: `${expenses[0].title} (copy)`,
     updatedAt: new Date().toISOString(),
   });
 

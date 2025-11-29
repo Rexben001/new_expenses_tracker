@@ -1,4 +1,4 @@
-import { createPk } from "../../utils/createPk";
+import { createExpensesPk, createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
@@ -9,12 +9,14 @@ export const updateBudgets = async ({
   userId,
   budgetId,
   subAccountId,
+  setIsRecurring,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
   subAccountId?: string;
+  setIsRecurring?: string;
 }) => {
   if (!budgetId) {
     throw new Error("Budget ID is required for updating a budget");
@@ -45,6 +47,35 @@ export const updateBudgets = async ({
     expressionAttributeNames,
     expressionAttributeValues
   );
+
+  if (setIsRecurring !== undefined) {
+    const expensePk = createExpensesPk(userId, budgetId, subAccountId);
+
+    const expenses = await dbService.queryItems(
+      "PK = :pk AND begins_with(SK, :skPrefix)",
+      {
+        ":pk": { S: expensePk },
+        ":skPrefix": { S: "EXPENSE#" },
+      }
+    );
+
+    console.log({
+      setIsRecurring,
+      expenses,
+    });
+
+    // Parallel updates (with concurrency control)
+    await Promise.all(
+      expenses.map((expense) =>
+        dbService.updateItem(
+          { PK: expense.PK, SK: expense.SK },
+          "SET #isRecurring = :isRecurring",
+          { "#isRecurring": "isRecurring" },
+          { ":isRecurring": false }
+        )
+      )
+    );
+  }
 
   return successResponse({
     message: "Budget updated successfully",

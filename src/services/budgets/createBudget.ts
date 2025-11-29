@@ -12,12 +12,14 @@ export const createBudgetOnly = async ({
   userId,
   budgetId,
   subAccountId,
+  oldBudgetId,
 }: {
   dbService: DbService;
   body: string;
   userId: string;
   budgetId?: string;
   subAccountId?: string;
+  oldBudgetId?: string;
 }) => {
   const _budgetId = budgetId ?? randomUUID();
 
@@ -35,6 +37,7 @@ export const createBudgetOnly = async ({
     userId,
     id: _budgetId,
     category,
+    oldBudgetId: oldBudgetId ?? undefined,
     updatedAt: parsedBody.updatedAt ?? new Date().toISOString().split("T")[0],
   };
 

@@ -12,6 +12,7 @@ export const UserSchema = z.object({
     .array(
       z.object({
         id: z.string().uuid(),
+        subAccountId: z.string().uuid(),
         name: z.string().min(1, "Sub-account name is required"),
         createdAt: z.string().refine((date) => !isNaN(Date.parse(date)), {
           message: "Date must be a valid date string",
