@@ -34,7 +34,7 @@ export const duplicateBudget = async ({
   const body = JSON.stringify({
     ...budget[0],
     id: null,
-    title: `${budget[0].title} Copy`,
+    title: `${budget[0].title} (copy)`,
     updatedAt: new Date().toISOString(),
     category: budget[0].category || "Others", // Default category if not provided
     userId,
