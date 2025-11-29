@@ -96,7 +96,7 @@ export async function generateRecurringExpensesForNewBudgets(
           : `${expense.title} (copy)`,
         amount: expense.amount,
         currency: expense.currency,
-        upcoming: expense.upcoming,
+        upcoming: true,
         favorite: expense.favorite,
         isRecurring: expense.isRecurring,
         description: expense.description,
