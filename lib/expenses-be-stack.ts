@@ -78,6 +78,12 @@ export class ExpensesBeStack extends cdk.Stack {
       }
     );
 
+    new NodejsFunction(this, "HandleDurableFunctionFn", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
+      handler: "handler",
+    });
+
     const rule = new cdk.aws_events.Rule(this, "RecurringBudgetsEventRule", {
       schedule: cdk.aws_events.Schedule.cron({ minute: "0", hour: "0" }), // every day at midnight UTC
     });
