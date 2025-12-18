@@ -1,37 +1,63 @@
+import { randomUUID } from "node:crypto";
 import {
-  DurableContext,
+  DurableExecutionHandler,
   withDurableExecution,
 } from "@aws/durable-execution-sdk-js";
+import { createPk } from "../../utils/createPk";
 
-export const handler = withDurableExecution(
-  async (event: any, context: DurableContext) => {
-    const orderId = event.orderId;
+type CreateOrderInput = {
+  userId: string;
+  subAccountId?: string;
+  order?: Record<string, unknown>;
+  notificationTarget?: string;
+};
 
-    // Step 1: Validate order
-    const validationResult = await context.step(async (stepContext) => {
-      stepContext.logger.info(`Validating order ${orderId}`);
-      return { orderId, status: "validated" };
+type CreateOrderResult = {
+  orderId: string;
+  userId: string;
+  createdAt: string;
+  notificationTarget?: string;
+};
+
+export const makeHandler = () => {
+  const durableHandler: DurableExecutionHandler<
+    CreateOrderInput,
+    CreateOrderResult
+  > = async (event, context) => {
+    if (!event?.userId) {
+      throw new Error("userId is required to create an order");
+    }
+
+    const createdAt = new Date().toISOString();
+    const orderId = randomUUID();
+    const pk = createPk(event.userId, event.subAccountId);
+    const sk = `ORDER#${orderId}`;
+
+    await context.step("create-order", async (stepContext) => {
+      stepContext.logger.info("Creating order", {
+        orderId,
+        userId: event.userId,
+      });
+      console.log("first step completed");
     });
 
-    // Step 2: Process payment
-    const paymentResult = await context.step(async (stepContext) => {
-      stepContext.logger.info(`Processing payment for order ${orderId}`);
-      return { orderId, status: "paid", amount: 99.99 };
-    });
+    await context.wait("wait-before-notify", { minutes: 5 });
 
-    // Wait for 10 seconds to simulate external confirmation
-    await context.wait({ seconds: 10 });
-
-    // Step 3: Confirm order
-    const confirmationResult = await context.step(async (stepContext) => {
-      stepContext.logger.info(`Confirming order ${orderId}`);
-      return { orderId, status: "confirmed" };
+    await context.step("send-notification", async (stepContext) => {
+      stepContext.logger.info("Sending order notification", {
+        orderId,
+        userId: event.userId,
+      });
+      console.log("Sent the order notification");
     });
 
     return {
-      orderId: orderId,
-      status: "completed",
-      steps: [validationResult, paymentResult, confirmationResult],
+      orderId,
+      userId: event.userId,
+      createdAt,
+      notificationTarget: event.notificationTarget,
     };
-  }
-);
+  };
+
+  return withDurableExecution(durableHandler);
+};
