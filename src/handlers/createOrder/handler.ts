@@ -3,7 +3,6 @@ import {
   DurableExecutionHandler,
   withDurableExecution,
 } from "@aws/durable-execution-sdk-js";
-import { createPk } from "../../utils/createPk";
 
 type CreateOrderInput = {
   userId: string;

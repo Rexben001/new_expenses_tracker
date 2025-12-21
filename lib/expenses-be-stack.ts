@@ -100,18 +100,8 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     customRole.attachInlinePolicy(
-      new cdk.aws_iam.Policy(this, "loggingPolicy", {
+      new cdk.aws_iam.Policy(this, "durablePolicy", {
         statements: [
-          new cdk.aws_iam.PolicyStatement({
-            effect: cdk.aws_iam.Effect.ALLOW,
-            actions: ["logs:CreateLogGroup"],
-            resources: ["*"],
-          }),
-          new cdk.aws_iam.PolicyStatement({
-            effect: cdk.aws_iam.Effect.ALLOW,
-            actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
-            resources: [orderFn.logGroup.logGroupArn],
-          }),
           new cdk.aws_iam.PolicyStatement({
             effect: cdk.aws_iam.Effect.ALLOW,
             actions: [
