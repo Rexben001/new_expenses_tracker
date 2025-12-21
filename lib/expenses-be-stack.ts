@@ -114,11 +114,6 @@ export class ExpensesBeStack extends cdk.Stack {
           }),
           new cdk.aws_iam.PolicyStatement({
             effect: cdk.aws_iam.Effect.ALLOW,
-            actions: ["dynamodb:GetItem"],
-            resources: [table.tableArn],
-          }),
-          new cdk.aws_iam.PolicyStatement({
-            effect: cdk.aws_iam.Effect.ALLOW,
             actions: [
               "lambda:CheckpointDurableExecution",
               "lambda:GetDurableExecutionState",
