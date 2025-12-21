@@ -88,7 +88,7 @@ export class ExpensesBeStack extends cdk.Stack {
       assumedBy: new cdk.aws_iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
-    const orderFn = new NodejsFunction(this, "CreateOrderFn", {
+    const orderFn = new NodejsFunction(this, "DurableOrderFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
       handler: "handler",
