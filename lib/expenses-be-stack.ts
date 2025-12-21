@@ -88,16 +88,31 @@ export class ExpensesBeStack extends cdk.Stack {
       assumedBy: new cdk.aws_iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
-    const orderFn = new NodejsFunction(this, "DurableOrderFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
-      entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
-      handler: "handler",
+    const orderFn = new lambda.Function(this, "DurableFunction", {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: "index.handler",
+      code: lambda.Code.fromAsset("../src/handlers/createOrder"),
+      functionName: `${props?.stackName}-function`,
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
       durableConfig: {
         executionTimeout: cdk.Duration.hours(1),
         retentionPeriod: cdk.Duration.days(30),
       },
       role: customRole,
     });
+
+    // new NodejsFunction(this, "DurableOrderFn", {
+    //   runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+    //   entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
+    //   handler: "handler",
+    //   durableConfig: {
+    //     executionTimeout: cdk.Duration.hours(1),
+    //     retentionPeriod: cdk.Duration.days(30),
+    //   },
+    //   role: customRole,
+    // });
 
     customRole.attachInlinePolicy(
       new cdk.aws_iam.Policy(this, "loggingPolicy", {
