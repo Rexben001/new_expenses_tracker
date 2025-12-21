@@ -108,7 +108,7 @@ export class ExpensesBeStack extends cdk.Stack {
               "lambda:CheckpointDurableExecution",
               "lambda:GetDurableExecutionState",
             ],
-            resources: ["*"],
+            resources: [orderFn.functionArn],
           }),
         ],
       })
