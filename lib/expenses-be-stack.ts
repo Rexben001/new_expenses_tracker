@@ -76,6 +76,10 @@ export class ExpensesBeStack extends cdk.Stack {
         environment: {
           TABLE_NAME: table.tableName,
         },
+        durableConfig: {
+          executionTimeout: cdk.Duration.minutes(15),
+          retentionPeriod: cdk.Duration.days(7),
+        },
       }
     );
 
@@ -84,14 +88,10 @@ export class ExpensesBeStack extends cdk.Stack {
       assumedBy: new cdk.aws_iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
-    const durableFunction = new lambda.Function(this, "DurableFunction", {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("../src/handlers/createOrder/index.ts"),
-      functionName: `${props?.stackName}-function`,
-      environment: {
-        TABLE_NAME: table.tableName,
-      },
+    const orderFn = new NodejsFunction(this, "CreateOrderFn", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
+      handler: "handler",
       durableConfig: {
         executionTimeout: cdk.Duration.hours(1),
         retentionPeriod: cdk.Duration.days(30),
@@ -110,7 +110,7 @@ export class ExpensesBeStack extends cdk.Stack {
           new cdk.aws_iam.PolicyStatement({
             effect: cdk.aws_iam.Effect.ALLOW,
             actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
-            resources: [durableFunction.logGroup.logGroupArn],
+            resources: [orderFn.logGroup.logGroupArn],
           }),
           new cdk.aws_iam.PolicyStatement({
             effect: cdk.aws_iam.Effect.ALLOW,
