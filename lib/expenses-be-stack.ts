@@ -93,7 +93,7 @@ export class ExpensesBeStack extends cdk.Stack {
       entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
       handler: "handler",
       durableConfig: {
-        executionTimeout: cdk.Duration.hours(1),
+        executionTimeout: cdk.Duration.minutes(10),
         retentionPeriod: cdk.Duration.days(30),
       },
       role: customRole,
