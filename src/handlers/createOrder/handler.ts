@@ -18,15 +18,15 @@ export const makeHandler = () => {
     CreateOrderInput,
     CreateOrderResult
   > = async (event, context) => {
-    const createdAt = new Date().toISOString();
-    const orderId = randomUUID();
-
-    await context.step("create-order", async (stepContext) => {
-      stepContext.logger.info("Creating order", {
-        orderId,
-      });
-      console.log("first step completed");
-    });
+    const { orderId, createdAt } = await context.step(
+      "create-order",
+      async () => {
+        return {
+          orderId: randomUUID(),
+          createdAt: new Date().toISOString(),
+        };
+      }
+    );
 
     await context.wait("wait-before-notify", { minutes: 5 });
 
