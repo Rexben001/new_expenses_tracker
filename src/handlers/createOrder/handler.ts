@@ -30,8 +30,6 @@ export const makeHandler = () => {
 
     const createdAt = new Date().toISOString();
     const orderId = randomUUID();
-    const pk = createPk(event.userId, event.subAccountId);
-    const sk = `ORDER#${orderId}`;
 
     await context.step("create-order", async (stepContext) => {
       stepContext.logger.info("Creating order", {
