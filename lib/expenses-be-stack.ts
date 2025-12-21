@@ -4,7 +4,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
-import * as sns from "aws-cdk-lib/aws-sns";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 
 import { handleRoutes } from "./apigw";
 import {
@@ -79,19 +79,53 @@ export class ExpensesBeStack extends cdk.Stack {
       }
     );
 
-    const durableFn = new NodejsFunction(this, "HandleDurableFunctionFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
-      entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
-      handler: "handler",
+    const customRole = new cdk.aws_iam.Role(this, "CustomRole", {
+      roleName: `${props?.stackName}-role`,
+      assumedBy: new cdk.aws_iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
-    durableFn.addToRolePolicy(
-      new cdk.aws_iam.PolicyStatement({
-        actions: [
-          "lambda:CheckpointDurableExecutions",
-          "lambda:GetDurableExecutionState",
+    const durableFunction = new lambda.Function(this, "DurableFunction", {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: "index.handler",
+      code: lambda.Code.fromAsset("../src/handlers/createOrder/index.ts"),
+      functionName: `${props?.stackName}-function`,
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+      durableConfig: {
+        executionTimeout: cdk.Duration.hours(1),
+        retentionPeriod: cdk.Duration.days(30),
+      },
+      role: customRole,
+    });
+
+    customRole.attachInlinePolicy(
+      new cdk.aws_iam.Policy(this, "loggingPolicy", {
+        statements: [
+          new cdk.aws_iam.PolicyStatement({
+            effect: cdk.aws_iam.Effect.ALLOW,
+            actions: ["logs:CreateLogGroup"],
+            resources: ["*"],
+          }),
+          new cdk.aws_iam.PolicyStatement({
+            effect: cdk.aws_iam.Effect.ALLOW,
+            actions: ["logs:CreateLogStream", "logs:PutLogEvents"],
+            resources: [durableFunction.logGroup.logGroupArn],
+          }),
+          new cdk.aws_iam.PolicyStatement({
+            effect: cdk.aws_iam.Effect.ALLOW,
+            actions: ["dynamodb:GetItem"],
+            resources: [table.tableArn],
+          }),
+          new cdk.aws_iam.PolicyStatement({
+            effect: cdk.aws_iam.Effect.ALLOW,
+            actions: [
+              "lambda:CheckpointDurableExecution",
+              "lambda:GetDurableExecutionState",
+            ],
+            resources: ["*"],
+          }),
         ],
-        resources: ["*"],
       })
     );
 
