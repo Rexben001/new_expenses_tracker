@@ -4,6 +4,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as sns from "aws-cdk-lib/aws-sns";
 
 import { handleRoutes } from "./apigw";
 import {
@@ -90,7 +91,7 @@ export class ExpensesBeStack extends cdk.Stack {
           "lambda:CheckpointDurableExecutions",
           "lambda:GetDurableExecutionState",
         ],
-        resources: [durableFn.functionArn],
+        resources: ["*"],
       })
     );
 
