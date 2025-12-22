@@ -29,7 +29,7 @@ export const makeHandler = () => {
     });
 
     // Wait 24 hours before checking cart status
-    await context.wait("wait-before-reminder", { hours: 24 });
+    await context.wait("wait-before-reminder", { minutes: 1 });
 
     // Check if cart was already checked out (mocked logic)
     const cartCheckedOut = false; // Simulate lookup
