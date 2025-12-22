@@ -90,7 +90,7 @@ export class ExpensesBeStack extends cdk.Stack {
 
     const cartReminderFn = new NodejsFunction(this, "CartReminderFn", {
       runtime: lambda.Runtime.NODEJS_LATEST,
-      entry: "../src/handlers/cartReminder/index.ts",
+      entry: path.join(__dirname, "../src/handlers/cartReminder/index.ts"),
       handler: "handler",
       durableConfig: {
         executionTimeout: cdk.Duration.minutes(10),
