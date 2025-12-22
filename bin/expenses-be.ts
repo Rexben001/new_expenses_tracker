@@ -10,7 +10,7 @@ const stackName = env === "prod" ? "ExpensesBeStack" : `ExpensesBeStack-${env}`;
 
 new ExpensesBeStack(app, stackName, {
   env: {
-    region: env === "prod" ? "eu-west-1" : "eu-west-2",
+    region: env === "prod" ? "eu-west-1" : "eu-central-1",
     account: "655187298276",
   },
 });
