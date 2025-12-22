@@ -88,9 +88,9 @@ export class ExpensesBeStack extends cdk.Stack {
       assumedBy: new cdk.aws_iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
-    const orderFn = new NodejsFunction(this, "DurableOrderFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
-      entry: path.join(__dirname, "../src/handlers/createOrder/index.ts"),
+    const cartReminderFn = new NodejsFunction(this, "CartReminderFn", {
+      runtime: lambda.Runtime.NODEJS_LATEST,
+      entry: "../src/handlers/cartReminder/index.ts",
       handler: "handler",
       durableConfig: {
         executionTimeout: cdk.Duration.minutes(10),
@@ -108,7 +108,7 @@ export class ExpensesBeStack extends cdk.Stack {
               "lambda:CheckpointDurableExecution",
               "lambda:GetDurableExecutionState",
             ],
-            resources: [orderFn.functionArn],
+            resources: [cartReminderFn.functionArn],
           }),
         ],
       })
