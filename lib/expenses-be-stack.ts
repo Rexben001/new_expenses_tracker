@@ -38,31 +38,31 @@ export class ExpensesBeStack extends cdk.Stack {
       projectionType: ProjectionType.ALL,
     });
 
+    const lambdaEnvironment = {
+      TABLE_NAME: table.tableName,
+      POWERTOOLS_SERVICE_NAME: "expenses-be",
+      POWERTOOLS_LOG_LEVEL: "INFO",
+    };
+
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleExpenses/index.ts"),
       handler: "handler",
-      environment: {
-        TABLE_NAME: table.tableName,
-      },
+      environment: lambdaEnvironment,
     });
 
     const handleBudgetsLambda = new NodejsFunction(this, "HandleBudgetFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleBudget/index.ts"),
       handler: "handler",
-      environment: {
-        TABLE_NAME: table.tableName,
-      },
+      environment: lambdaEnvironment,
     });
 
     const handleUsersLambda = new NodejsFunction(this, "HandleUsersFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleUsers/index.ts"),
       handler: "handler",
-      environment: {
-        TABLE_NAME: table.tableName,
-      },
+      environment: lambdaEnvironment,
     });
 
     const handleRecurringBudgetsLambda = new NodejsFunction(
@@ -72,9 +72,7 @@ export class ExpensesBeStack extends cdk.Stack {
         runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
         entry: path.join(__dirname, "../src/handlers/handleRecurring/index.ts"),
         handler: "handler",
-        environment: {
-          TABLE_NAME: table.tableName,
-        },
+        environment: lambdaEnvironment,
       }
     );
 

@@ -1,4 +1,8 @@
-import { APIGatewayEvent, PostConfirmationTriggerEvent } from "aws-lambda";
+import {
+  APIGatewayEvent,
+  Context,
+  PostConfirmationTriggerEvent,
+} from "aws-lambda";
 import { DbService } from "../../services/shared/dbService";
 import { createSubAccount, createUser } from "../../services/users/createUser";
 import { getUser } from "../../services/users/getUser";
@@ -6,28 +10,54 @@ import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
 import { updateUser } from "../../services/users/updateUser";
 import { deleteSubAccount } from "../../services/users/deleteSubAccount";
+import { createInvocationLogger } from "../../utils/logger";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
-  return async (event: PostConfirmationTriggerEvent | APIGatewayEvent) => {
+  return async (
+    event: PostConfirmationTriggerEvent | APIGatewayEvent,
+    context: Context
+  ) => {
+    const logger = createInvocationLogger(context, {
+      handler: "handleUsers",
+    });
+
     try {
       if (isPostConfirmationEvent(event)) {
-        // Handle Post Confirmation Trigger Event
+        logger.appendKeys({
+          triggerSource: event.triggerSource,
+        });
+
         const userId = event.request.userAttributes.sub;
         const email = event.request.userAttributes.email;
 
         if (event?.triggerSource === "PostConfirmation_ConfirmSignUp") {
+          logger.info("Creating user from Cognito post-confirmation trigger", {
+            userId,
+          });
           await createUser({
             dbService,
             userId,
             email,
           });
         }
+
+        logger.resetKeys();
         return event;
       } else {
         const eventMethod = event.httpMethod;
         const userId = getUserId(event);
-
         const subAccountId = event.queryStringParameters?.subId;
+
+        logger.appendKeys({
+          path: event.path,
+          method: eventMethod,
+        });
+
+        logger.info("Received user request", {
+          userId,
+          subAccountId,
+          hasBody: Boolean(event.body),
+        });
 
         switch (eventMethod) {
           case "GET":
@@ -61,7 +91,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         }
       }
     } catch (error) {
-      console.error("Error in handler:", error);
+      logger.error("Error handling users request", { error });
       return {
         statusCode: 500,
         body: JSON.stringify({

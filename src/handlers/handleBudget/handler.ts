@@ -1,4 +1,4 @@
-import type { APIGatewayEvent } from "aws-lambda";
+import type { APIGatewayEvent, Context } from "aws-lambda";
 import { DbService } from "../../services/shared/dbService";
 import { HttpError } from "../../utils/http-error";
 import { createBudget } from "../../services/budgets/createBudget";
@@ -8,9 +8,16 @@ import { deleteBudget } from "../../services/budgets/deleteBudget";
 import { getUserId } from "../../utils/getUserId";
 import { errorResponse } from "../../utils/response";
 import { duplicateBudget } from "../../services/budgets/duplicateBudget";
+import { createInvocationLogger } from "../../utils/logger";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
-  return async (event: APIGatewayEvent) => {
+  return async (event: APIGatewayEvent, context: Context) => {
+    const logger = createInvocationLogger(context, {
+      handler: "handleBudget",
+      path: event.path,
+      method: event.httpMethod,
+    });
+
     try {
       const eventMethod = event.httpMethod;
       const userId = getUserId(event);
@@ -19,6 +26,14 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       const onlyBudget = event.queryStringParameters?.only === "true";
       const subAccountId = event.queryStringParameters?.subId;
       const setIsRecurring = event.queryStringParameters?.setIsRecurring;
+
+      logger.info("Received budget request", {
+        budgetId,
+        subAccountId,
+        onlyBudget,
+        hasBody: body.length > 0,
+        isDuplicateRoute: event.path.includes("duplicates"),
+      });
 
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
@@ -70,10 +85,10 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         default:
           throw new HttpError("Method not allowed", 405, {
             cause: new Error(`Method ${eventMethod} is not allowed`),
-          });
+        });
       }
     } catch (error) {
-      console.error("Error handling budget:", error);
+      logger.error("Error handling budget request", { error });
       return errorResponse();
     }
   };

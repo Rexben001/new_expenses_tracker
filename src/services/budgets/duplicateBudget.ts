@@ -5,6 +5,7 @@ import { getExpenseItem } from "../expenses/getExpenses";
 import { createExpenses } from "../expenses/createExpenses";
 import { errorResponse, successResponse } from "../../utils/response";
 import { formatDbItem } from "../../utils/format-item";
+import { logger } from "../../utils/logger";
 
 export const duplicateBudget = async ({
   dbService,
@@ -27,7 +28,11 @@ export const duplicateBudget = async ({
   });
 
   if (!budget.length) {
-    console.error("No budget");
+    logger.warn("No budget found to duplicate", {
+      userId,
+      budgetId,
+      subAccountId,
+    });
     return errorResponse();
   }
 

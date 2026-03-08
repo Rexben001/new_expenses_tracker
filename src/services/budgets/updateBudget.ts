@@ -1,5 +1,6 @@
 import { createExpensesPk, createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
+import { logger } from "../../utils/logger";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
 
@@ -59,9 +60,11 @@ export const updateBudgets = async ({
       }
     );
 
-    console.log({
+    logger.info("Updating recurring flag for budget expenses", {
       setIsRecurring,
-      expenses,
+      budgetId,
+      subAccountId,
+      expensesCount: expenses.length,
     });
 
     // Parallel updates (with concurrency control)

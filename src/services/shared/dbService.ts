@@ -8,6 +8,7 @@ import {
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { logger } from "../../utils/logger";
 
 export interface DbService {
   getItem(key: Record<string, any>): Promise<Record<string, any>>;
@@ -158,7 +159,14 @@ export function makeDbService(
           },
         });
         await client.send(deleteCommand);
-        console.log("deleted!", item);
+        logger.info("Deleted item while removing by prefix", {
+          partitionKey,
+          prefix,
+          itemKeys: {
+            PK: item.PK,
+            SK: item.SK,
+          },
+        });
       }
     },
   };

@@ -1,5 +1,6 @@
 import { createExpensesPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
+import { logger } from "../../utils/logger";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
 import { createExpenses } from "./createExpenses";
@@ -121,7 +122,7 @@ function parseEventBody(body: string) {
   try {
     return JSON.parse(body);
   } catch (error) {
-    console.error("Failed to parse request body JSON:", error);
+    logger.warn("Failed to parse expense request body JSON", { error });
     throw new Error("Invalid JSON in request body");
   }
 }

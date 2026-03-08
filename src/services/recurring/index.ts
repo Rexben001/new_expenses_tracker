@@ -19,6 +19,7 @@ import {
   saveBudgetInstancesToDb,
   getAllUsersWithSubAccounts,
 } from "./dbQuery";
+import { logger } from "../../utils/logger";
 
 export function generateNextMonthRecurringBudgets(
   recurringBudgets: Budget[]
@@ -154,15 +155,15 @@ export async function processRecurringDataForUser(
   const mainBudgetMap = Object.fromEntries(
     savedMainBudgets.map((b: any) => [b.oldBudgetId, b.id])
   );
-  console.log("🗺️ Main budget old→new ID map created:", mainBudgetMap);
+  logger.info("Main budget old-to-new ID map created", { mainBudgetMap });
 
-  console.log("💰 Generating recurring expenses for main budgets");
+  logger.info("Generating recurring expenses for main budgets");
   const mainExpenses = await generateRecurringExpensesForNewBudgets(
     dbService,
     mainBudgetMap,
     userId
   );
-  console.log("✅ Main recurring expenses created:", {
+  logger.info("Main recurring expenses created", {
     count: mainExpenses.length,
   });
 
@@ -174,22 +175,24 @@ export async function processRecurringDataForUser(
 
   // 🟣 SUB-ACCOUNT LEVEL
   for (const subId of subAccountIds) {
-    console.log(`📘 Fetching recurring budgets for sub-account ${subId}`);
+    logger.info("Fetching recurring budgets for sub-account", { subId });
     const recurringBudgets = await getRecurringBudgets(
       dbService,
       userId,
       subId
     );
-    console.log(`✅ Budgets fetched for sub-account ${subId}:`, {
-      recurringBudgets,
+    logger.info("Budgets fetched for sub-account", {
+      subId,
+      count: recurringBudgets.length,
     });
 
-    console.log(`🧮 Generating next month’s budgets for sub-account ${subId}`);
+    logger.info("Generating next month budgets for sub-account", { subId });
     const budgetInstances = generateNextMonthRecurringBudgets(
       recurringBudgets as Budget[]
     );
-    console.log(`✅ Generated new budget instances for ${subId}:`, {
-      budgetInstances,
+    logger.info("Generated new budget instances for sub-account", {
+      subId,
+      count: budgetInstances.length,
     });
 
     const scopedInstances = budgetInstances.map((b) => ({
@@ -199,34 +202,37 @@ export async function processRecurringDataForUser(
       title: b.title.endsWith(" (copy)") ? b.title : `${b.title} (copy)`,
     }));
 
-    console.log(`✅ Generated new budget instances for ${subId}:`, {
-      scopedInstances,
+    logger.info("Generated scoped budget instances for sub-account", {
+      subId,
+      count: scopedInstances.length,
     });
 
-    console.log(`💾 Saving budget instances for sub-account ${subId}`);
+    logger.info("Saving budget instances for sub-account", { subId });
     const savedBudgets = await saveBudgetInstancesToDb(
       dbService,
       scopedInstances
     );
-    console.log(
-      `✅ Saved ${savedBudgets.length} budgets for sub-account ${subId}`
-    );
+    logger.info("Saved budgets for sub-account", {
+      subId,
+      count: savedBudgets.length,
+    });
 
     const budgetMap = Object.fromEntries(
       savedBudgets.map((b: any) => [b.oldBudgetId, b.id])
     );
-    console.log(`🗺️ Budget map for sub-account ${subId}:`, budgetMap);
+    logger.info("Budget map created for sub-account", { subId, budgetMap });
 
-    console.log(`💰 Generating recurring expenses for sub-account ${subId}`);
+    logger.info("Generating recurring expenses for sub-account", { subId });
     const newExpenses = await generateRecurringExpensesForNewBudgets(
       dbService,
       budgetMap,
       userId,
       subId
     );
-    console.log(
-      `✅ Created ${newExpenses.length} recurring expenses for ${subId}`
-    );
+    logger.info("Created recurring expenses for sub-account", {
+      subId,
+      count: newExpenses.length,
+    });
 
     allResults.push({
       scope: subId,
@@ -235,8 +241,8 @@ export async function processRecurringDataForUser(
     });
   }
 
-  console.log("🎯 Recurring job summary:", allResults);
-  console.log("✅ Recurring data processing completed for user:", userId);
+  logger.info("Recurring job summary for user", { userId, allResults });
+  logger.info("Recurring data processing completed for user", { userId });
 
   return allResults;
 }
@@ -248,7 +254,9 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
   const users = await getAllUsersWithSubAccounts(dbService);
   const report: any[] = [];
 
-  console.log("users:", users);
+  logger.info("Processing monthly recurring job users", {
+    userCount: users.length,
+  });
 
   for (const user of users) {
     const result = await processRecurringDataForUser(dbService, user as User);
@@ -256,9 +264,8 @@ export async function processMonthlyRecurringJob(dbService: DbService) {
     report.push({ userId: (user as User).id, details: result });
   }
 
-  console.log(
-    "✅ Monthly recurring budgets & expenses processed:",
-    JSON.stringify(report, null, 2)
-  );
+  logger.info("Monthly recurring budgets and expenses processed", {
+    usersProcessed: report.length,
+  });
   return report;
 }

@@ -1,6 +1,7 @@
 import { formatISO, subMonths } from "date-fns";
 import { Budget } from "../../domain/models/budget";
 import { createPk, createExpensesPk } from "../../utils/createPk";
+import { logger } from "../../utils/logger";
 import { createBudgetOnly } from "../budgets/createBudget";
 import { DbService } from "../shared/dbService";
 
@@ -10,7 +11,7 @@ export const getRecurringBudgets = async (
   subAccountId?: string
 ) => {
   const pk = createPk(userId, subAccountId);
-  console.log({
+  logger.debug("Fetching recurring budgets", {
     pk,
   });
   const cutoffDate = formatISO(subMonths(new Date(), 1), {
@@ -40,7 +41,7 @@ export const getRecurringExpensesForBudget = async (
     representation: "date",
   });
 
-  console.log({ pk });
+  logger.debug("Fetching recurring expenses for budget", { pk, budgetId });
 
   return dbService.queryItems(
     "PK = :pk AND begins_with(SK, :skPrefix)",

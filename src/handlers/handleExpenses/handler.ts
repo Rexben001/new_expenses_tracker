@@ -1,4 +1,4 @@
-import type { APIGatewayEvent } from "aws-lambda";
+import type { APIGatewayEvent, Context } from "aws-lambda";
 import { DbService } from "../../services/shared/dbService";
 import { HttpError } from "../../utils/http-error";
 import { createExpenses } from "../../services/expenses/createExpenses";
@@ -8,15 +8,30 @@ import { deleteExpenses } from "../../services/expenses/deleteExpenses";
 import { getUserId } from "../../utils/getUserId";
 import { errorResponse } from "../../utils/response";
 import { duplicateExpenses } from "../../services/expenses/duplicateExpense";
+import { createInvocationLogger } from "../../utils/logger";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
-  return async (event: APIGatewayEvent) => {
+  return async (event: APIGatewayEvent, context: Context) => {
+    const logger = createInvocationLogger(context, {
+      handler: "handleExpenses",
+      path: event.path,
+      method: event.httpMethod,
+    });
+
     try {
       const eventMethod = event.httpMethod;
       const userId = getUserId(event);
       const budgetId = event.queryStringParameters?.budgetId;
       const expenseId = event.pathParameters?.expenseId;
       const subAccountId = event.queryStringParameters?.subId;
+
+      logger.info("Received expense request", {
+        budgetId,
+        expenseId,
+        subAccountId,
+        hasBody: Boolean(event.body),
+        isDuplicateRoute: event.path.includes("duplicates"),
+      });
 
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
@@ -82,10 +97,10 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         default:
           throw new HttpError("Method not allowed", 405, {
             cause: new Error(`Method ${eventMethod} is not allowed`),
-          });
+        });
       }
     } catch (error) {
-      console.error("Error handling expenses:", error);
+      logger.error("Error handling expenses request", { error });
       return errorResponse();
     }
   };
