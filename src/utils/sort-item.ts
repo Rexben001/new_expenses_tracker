@@ -1,9 +1,9 @@
-import { Budget } from "../domain/models/budget";
-import { Expense } from "../domain/models/expense";
+type RecentItem = {
+  updatedAt: string;
+  upcoming?: boolean;
+};
 
-export function sortItemByRecent<T extends (Expense | Budget)[]>(
-  items: T
-): Array<T[number]> {
+export function sortItemByRecent<T extends RecentItem[]>(items: T): Array<T[number]> {
   return [...items].sort((a, b) => {
     // Upcoming items first
     if (a.upcoming && !b.upcoming) return -1;

@@ -16,10 +16,12 @@ export const handleRoutes = (
     expensesIntegration,
     budgetsIntegration,
     usersIntegration,
+    tasksIntegration,
   }: {
     expensesIntegration: aws_apigateway.LambdaIntegration;
     budgetsIntegration: aws_apigateway.LambdaIntegration;
     usersIntegration: aws_apigateway.LambdaIntegration;
+    tasksIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
   const authorizerParams = {
@@ -37,6 +39,7 @@ export const handleRoutes = (
     authorizerParams,
     integration: budgetsIntegration,
   });
+  handleTasksRoutes({ api, authorizerParams, integration: tasksIntegration });
   handleUsersRoutes({ api, authorizerParams, integration: usersIntegration });
 };
 
@@ -142,4 +145,27 @@ const handleUsersRoutes = ({
   users.addMethod("PUT", integration, authorizerParams);
   users.addMethod("POST", integration, authorizerParams);
   users.addMethod("DELETE", integration, authorizerParams);
+};
+
+const handleTasksRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const tasks = api.root.addResource("tasks");
+  addCorsPreflight(tasks);
+
+  tasks.addMethod("GET", integration, authorizerParams);
+  tasks.addMethod("POST", integration, authorizerParams);
+
+  const taskId = tasks.addResource("{taskId}");
+  addCorsPreflight(taskId);
+
+  taskId.addMethod("GET", integration, authorizerParams);
+  taskId.addMethod("PUT", integration, authorizerParams);
+  taskId.addMethod("DELETE", integration, authorizerParams);
 };

@@ -31,6 +31,12 @@ export class ExpensesBeStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
+    const tasksTable = new Table(this, "TasksTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
     table.addGlobalSecondaryIndex({
       indexName: "UserExpensesIndex",
       partitionKey: { name: "gsiPk", type: AttributeType.STRING },
@@ -65,6 +71,16 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: lambdaEnvironment,
     });
 
+    const handleTasksLambda = new NodejsFunction(this, "HandleTasksFn", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      entry: path.join(__dirname, "../src/handlers/handleTasks/index.ts"),
+      handler: "handler",
+      environment: {
+        ...lambdaEnvironment,
+        TABLE_NAME: tasksTable.tableName,
+      },
+    });
+
     const handleRecurringBudgetsLambda = new NodejsFunction(
       this,
       "HandleRecurringBudgetsFn",
@@ -94,6 +110,7 @@ export class ExpensesBeStack extends cdk.Stack {
     table.grantReadWriteData(handleBudgetsLambda);
     table.grantReadWriteData(handleUsersLambda);
     table.grantReadWriteData(handleRecurringBudgetsLambda);
+    tasksTable.grantReadWriteData(handleTasksLambda);
 
     const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
       userPoolName: "expenses-user-pool",
@@ -175,6 +192,10 @@ export class ExpensesBeStack extends cdk.Stack {
       handleUsersLambda
     );
 
+    const tasksIntegration = new apigateway.LambdaIntegration(
+      handleTasksLambda
+    );
+
     new apigateway.GatewayResponse(this, "UnauthorizedResponse", {
       restApi: api,
       type: apigateway.ResponseType.UNAUTHORIZED, // 401
@@ -207,6 +228,7 @@ export class ExpensesBeStack extends cdk.Stack {
       expensesIntegration,
       budgetsIntegration,
       usersIntegration,
+      tasksIntegration,
     });
 
     const deploymentStage = api.deploymentStage.node.defaultChild as CfnStage;
@@ -220,6 +242,9 @@ export class ExpensesBeStack extends cdk.Stack {
     new cdk.CfnOutput(this, "UserPoolId", { value: userPool.userPoolId });
     new cdk.CfnOutput(this, "UserPoolClientId", {
       value: userPoolClient.userPoolClientId,
+    });
+    new cdk.CfnOutput(this, "TasksTableName", {
+      value: tasksTable.tableName,
     });
   }
 }
