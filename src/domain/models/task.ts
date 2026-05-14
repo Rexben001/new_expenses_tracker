@@ -2,12 +2,19 @@ import { z } from "zod";
 
 export const TaskPrioritySchema = z.enum(["low", "medium", "high"]);
 
+export const SubTaskSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "Subtask title is required"),
+  completed: z.boolean().optional().default(false),
+});
+
 export const TaskSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   group: z.string().optional(),
   tags: z.array(z.string()).default([]),
+  subtasks: z.array(SubTaskSchema).optional().default([]),
   dueDate: z.string().optional(),
   completed: z.boolean().default(false),
   priority: TaskPrioritySchema.default("medium"),
@@ -25,6 +32,7 @@ export const TaskRequestSchema = z.object({
   description: z.string().optional(),
   group: z.string().optional(),
   tags: z.array(z.string()).optional().default([]),
+  subtasks: z.array(SubTaskSchema).optional().default([]),
   dueDate: z.string().optional(),
   completed: z.boolean().optional().default(false),
   priority: TaskPrioritySchema.optional().default("medium"),
@@ -40,6 +48,7 @@ export const TaskUpdateRequestSchema = z.object({
   description: z.string().optional(),
   group: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  subtasks: z.array(SubTaskSchema).optional(),
   dueDate: z.string().optional(),
   completed: z.boolean().optional(),
   priority: TaskPrioritySchema.optional(),

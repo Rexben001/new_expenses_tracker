@@ -33,6 +33,7 @@ export const createTask = async ({
     userId,
     id: _taskId,
     tags: parsedBody.tags ?? [],
+    subtasks: parsedBody.subtasks ?? [],
     completed: parsedBody.completed ?? false,
     priority: parsedBody.priority ?? "medium",
     createdAt: parsedBody.createdAt ?? now,
