@@ -8,6 +8,8 @@ export const SubTaskSchema = z.object({
   completed: z.boolean().optional().default(false),
 });
 
+export const TaskReminderOffsetMinutesSchema = z.number().int().min(1).max(1440);
+
 export const TaskSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, "Title is required"),
@@ -17,6 +19,7 @@ export const TaskSchema = z.object({
   subtasks: z.array(SubTaskSchema).optional().default([]),
   dueDate: z.string().optional(),
   dueTime: z.string().optional(),
+  reminderOffsetMinutes: TaskReminderOffsetMinutesSchema.optional().default(10),
   completed: z.boolean().default(false),
   priority: TaskPrioritySchema.default("medium"),
   userId: z.string().uuid().optional(),
@@ -36,6 +39,7 @@ export const TaskRequestSchema = z.object({
   subtasks: z.array(SubTaskSchema).optional().default([]),
   dueDate: z.string().optional(),
   dueTime: z.string().optional(),
+  reminderOffsetMinutes: TaskReminderOffsetMinutesSchema.optional().default(10),
   completed: z.boolean().optional().default(false),
   priority: TaskPrioritySchema.optional().default("medium"),
   userId: z.string().uuid().optional(),
@@ -53,6 +57,7 @@ export const TaskUpdateRequestSchema = z.object({
   subtasks: z.array(SubTaskSchema).optional(),
   dueDate: z.string().optional(),
   dueTime: z.string().optional(),
+  reminderOffsetMinutes: TaskReminderOffsetMinutesSchema.optional(),
   completed: z.boolean().optional(),
   priority: TaskPrioritySchema.optional(),
   userId: z.string().uuid().optional(),
