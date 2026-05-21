@@ -22,6 +22,7 @@ export const createTask = async ({
   const _taskId = taskId ?? randomUUID();
   const parsedBody = parseEventBody(body ?? "");
   const now = new Date().toISOString();
+  const defaultDueAt = getDefaultDueAt();
 
   const pk = createPk(userId, subAccountId);
   const sk = `TASK#${_taskId}`;
@@ -34,6 +35,8 @@ export const createTask = async ({
     id: _taskId,
     tags: parsedBody.tags ?? [],
     subtasks: parsedBody.subtasks ?? [],
+    dueDate: parsedBody.dueDate ?? toDateInputValue(defaultDueAt),
+    dueTime: parsedBody.dueTime ?? toTimeInputValue(defaultDueAt),
     reminderOffsetMinutes: parsedBody.reminderOffsetMinutes ?? 10,
     completed: parsedBody.completed ?? false,
     priority: parsedBody.priority ?? "medium",
@@ -52,6 +55,25 @@ export const createTask = async ({
     201
   );
 };
+
+function getDefaultDueAt() {
+  const date = new Date();
+  date.setHours(date.getHours() + 1, date.getMinutes(), 0, 0);
+  return date;
+}
+
+function toDateInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function toTimeInputValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes()
+  ).padStart(2, "0")}`;
+}
 
 const parseEventBody = (body: string): TaskRequest => {
   try {
