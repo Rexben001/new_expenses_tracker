@@ -7,7 +7,11 @@ import {
 } from "../../domain/models/expense";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
-import { createExpensesPk, createPk } from "../../utils/createPk";
+import {
+  createDateIndexSk,
+  createExpensesPk,
+  createPk,
+} from "../../utils/createPk";
 
 export const createExpenses = async ({
   dbService,
@@ -33,6 +37,7 @@ export const createExpenses = async ({
   const sk = `EXPENSE#${_expenseId}`;
 
   const category = parsedBody.category ?? "Others"; // Default category if not provided
+  const updatedAt = parsedBody.updatedAt ?? new Date().toISOString().split("T")[0];
 
   const item = {
     ...parsedBody,
@@ -40,10 +45,12 @@ export const createExpenses = async ({
     SK: sk,
     gsiPk: userPK,
     gsiSk: sk,
+    dateGsiPk: userPK,
+    dateGsiSk: createDateIndexSk("EXPENSE", updatedAt, _expenseId),
     userId,
     id: _expenseId,
     category,
-    updatedAt: parsedBody.updatedAt ?? new Date().toISOString().split("T")[0],
+    updatedAt,
     budgetId: budgetId ?? undefined,
     subAccountId: subAccountId ?? undefined,
   };

@@ -74,6 +74,10 @@ const handleExpensesRoutes = ({
   handleExpenses.addMethod("POST", integration, additionaLMethodOptions);
   handleExpenses.addMethod("GET", integration, additionaLMethodOptions);
 
+  const insights = handleExpenses.addResource("insights");
+  addCorsPreflight(insights);
+  insights.addMethod("GET", integration, authorizerParams);
+
   // GET /expenses/{expenseId} route
   const withExpenseId = handleExpenses.addResource("{expenseId}");
 

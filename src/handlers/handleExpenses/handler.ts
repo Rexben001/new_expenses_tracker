@@ -9,6 +9,7 @@ import { getUserId } from "../../utils/getUserId";
 import { errorResponse } from "../../utils/response";
 import { duplicateExpenses } from "../../services/expenses/duplicateExpense";
 import { createInvocationLogger } from "../../utils/logger";
+import { getExpenseInsights } from "../../services/expenses/getExpenseInsights";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent, context: Context) => {
@@ -45,6 +46,14 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
           userId,
           budgetId,
           expenseId,
+          subAccountId,
+        });
+      }
+
+      if (event.path.includes("/insights")) {
+        return getExpenseInsights({
+          dbService,
+          userId,
           subAccountId,
         });
       }

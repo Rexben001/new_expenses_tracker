@@ -79,7 +79,7 @@ function findSummaryValue(
     types.includes(field.Type?.Text?.toUpperCase() ?? "")
   );
 
-  return match?.ValueDetection?.Text?.trim() || null;
+  return normalizeTextValue(match?.ValueDetection?.Text) || null;
 }
 
 function firstReceiptLine(rawText: string) {
@@ -87,6 +87,10 @@ function firstReceiptLine(rawText: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .find(Boolean) ?? null;
+}
+
+function normalizeTextValue(value: string | undefined) {
+  return value?.replace(/\s+/g, " ").trim() ?? "";
 }
 
 function averageConfidence(fields: ExpenseField[]) {

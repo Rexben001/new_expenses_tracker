@@ -4,7 +4,7 @@ import { HttpError } from "../../utils/http-error";
 import { DbService } from "../shared/dbService";
 import { formatDbItem } from "../../utils/format-item";
 import { successResponse } from "../../utils/response";
-import { createPk } from "../../utils/createPk";
+import { createDateIndexSk, createPk } from "../../utils/createPk";
 
 export const createBudgetOnly = async ({
   dbService,
@@ -29,16 +29,19 @@ export const createBudgetOnly = async ({
   const sk = `BUDGET#${_budgetId}`;
 
   const category = parsedBody.category || "Others"; // Default category if not provided
+  const updatedAt = parsedBody.updatedAt ?? new Date().toISOString().split("T")[0];
 
   const item = {
     ...parsedBody,
     PK: pk,
     SK: sk,
+    dateGsiPk: pk,
+    dateGsiSk: createDateIndexSk("BUDGET", updatedAt, _budgetId),
     userId,
     id: _budgetId,
     category,
     oldBudgetId: oldBudgetId ?? undefined,
-    updatedAt: parsedBody.updatedAt ?? new Date().toISOString().split("T")[0],
+    updatedAt,
   };
 
   await dbService.putItem(item);

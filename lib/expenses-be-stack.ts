@@ -49,6 +49,13 @@ export class ExpensesBeStack extends cdk.Stack {
       projectionType: ProjectionType.ALL,
     });
 
+    table.addGlobalSecondaryIndex({
+      indexName: "UserItemsByDateIndex",
+      partitionKey: { name: "dateGsiPk", type: AttributeType.STRING },
+      sortKey: { name: "dateGsiSk", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
     const lambdaEnvironment = {
       TABLE_NAME: table.tableName,
       POWERTOOLS_SERVICE_NAME: "expenses-be",

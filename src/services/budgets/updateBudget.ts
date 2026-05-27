@@ -1,4 +1,4 @@
-import { createExpensesPk, createPk } from "../../utils/createPk";
+import { createDateIndexSk, createExpensesPk, createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { logger } from "../../utils/logger";
 import { successResponse } from "../../utils/response";
@@ -24,21 +24,28 @@ export const updateBudgets = async ({
   }
 
   const parsedBody = parseEventBody(body ?? "");
+  const bodyForUpdate = {
+    ...parsedBody,
+    ...(parsedBody.updatedAt && {
+      dateGsiPk: createPk(userId, subAccountId),
+      dateGsiSk: createDateIndexSk("BUDGET", parsedBody.updatedAt, budgetId),
+    }),
+  };
 
   const pk = createPk(userId, subAccountId);
   const sk = `BUDGET#${budgetId}`;
 
-  const updateExpression = Object.keys(parsedBody)
+  const updateExpression = Object.keys(bodyForUpdate)
     .map((key) => `#${key} = :${key}`)
     .join(", ");
 
-  const expressionAttributeNames = Object.keys(parsedBody).reduce(
+  const expressionAttributeNames = Object.keys(bodyForUpdate).reduce(
     (acc, key) => ({ ...acc, [`#${key}`]: key }),
     {}
   );
 
-  const expressionAttributeValues = Object.keys(parsedBody).reduce(
-    (acc, key) => ({ ...acc, [`:${key}`]: parsedBody[key] }),
+  const expressionAttributeValues = Object.keys(bodyForUpdate).reduce(
+    (acc, key) => ({ ...acc, [`:${key}`]: bodyForUpdate[key] }),
     {}
   );
 

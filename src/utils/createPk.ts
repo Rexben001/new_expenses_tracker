@@ -26,3 +26,9 @@ export const createPk = (userId: string, subAccountId?: string) => {
   }
   return pk;
 };
+
+export const createDateIndexSk = (
+  type: "EXPENSE" | "BUDGET",
+  date: string,
+  id: string
+) => `${type}#${date.slice(0, 10)}#${id}`;
