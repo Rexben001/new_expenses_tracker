@@ -17,7 +17,12 @@ import {
   CfnStage,
   MethodLoggingLevel,
 } from "aws-cdk-lib/aws-apigateway";
-import { ManagedPolicy, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import {
+  ManagedPolicy,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -80,6 +85,20 @@ export class ExpensesBeStack extends cdk.Stack {
         TABLE_NAME: tasksTable.tableName,
       },
     });
+
+    const handleReceiptsLambda = new NodejsFunction(this, "HandleReceiptsFn", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      entry: path.join(__dirname, "../src/handlers/handleReceipts/index.ts"),
+      handler: "handler",
+      environment: lambdaEnvironment,
+    });
+
+    handleReceiptsLambda.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["textract:AnalyzeExpense"],
+        resources: ["*"],
+      })
+    );
 
     const handleRecurringBudgetsLambda = new NodejsFunction(
       this,
@@ -196,6 +215,10 @@ export class ExpensesBeStack extends cdk.Stack {
       handleTasksLambda
     );
 
+    const receiptsIntegration = new apigateway.LambdaIntegration(
+      handleReceiptsLambda
+    );
+
     new apigateway.GatewayResponse(this, "UnauthorizedResponse", {
       restApi: api,
       type: apigateway.ResponseType.UNAUTHORIZED, // 401
@@ -229,6 +252,7 @@ export class ExpensesBeStack extends cdk.Stack {
       budgetsIntegration,
       usersIntegration,
       tasksIntegration,
+      receiptsIntegration,
     });
 
     const deploymentStage = api.deploymentStage.node.defaultChild as CfnStage;

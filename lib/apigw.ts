@@ -17,11 +17,13 @@ export const handleRoutes = (
     budgetsIntegration,
     usersIntegration,
     tasksIntegration,
+    receiptsIntegration,
   }: {
     expensesIntegration: aws_apigateway.LambdaIntegration;
     budgetsIntegration: aws_apigateway.LambdaIntegration;
     usersIntegration: aws_apigateway.LambdaIntegration;
     tasksIntegration: aws_apigateway.LambdaIntegration;
+    receiptsIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
   const authorizerParams = {
@@ -41,6 +43,11 @@ export const handleRoutes = (
   });
   handleTasksRoutes({ api, authorizerParams, integration: tasksIntegration });
   handleUsersRoutes({ api, authorizerParams, integration: usersIntegration });
+  handleReceiptsRoutes({
+    api,
+    authorizerParams,
+    integration: receiptsIntegration,
+  });
 };
 
 const handleExpensesRoutes = ({
@@ -168,4 +175,22 @@ const handleTasksRoutes = ({
   taskId.addMethod("GET", integration, authorizerParams);
   taskId.addMethod("PUT", integration, authorizerParams);
   taskId.addMethod("DELETE", integration, authorizerParams);
+};
+
+const handleReceiptsRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const receipts = api.root.addResource("receipts");
+  addCorsPreflight(receipts);
+
+  const scanV2 = receipts.addResource("scan-v2");
+  addCorsPreflight(scanV2);
+
+  scanV2.addMethod("POST", integration, authorizerParams);
 };
