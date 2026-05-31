@@ -68,6 +68,13 @@ function normalizeClients(clients?: CalendarClient[]) {
       ...client,
       id: client.id || randomUUID(),
       name: client.name.trim(),
+      startTime: client.startTime,
+      hairStyle: {
+        style: client.hairStyle?.style ?? "knotless",
+        size: client.hairStyle?.size ?? "medium",
+        length: client.hairStyle?.length ?? "bra",
+        additionalDetails: client.hairStyle?.additionalDetails,
+      },
     }))
     .filter((client) => client.name);
 }
