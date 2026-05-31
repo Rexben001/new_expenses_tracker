@@ -17,12 +17,14 @@ export const handleRoutes = (
     budgetsIntegration,
     usersIntegration,
     tasksIntegration,
+    calendarIntegration,
     receiptsIntegration,
   }: {
     expensesIntegration: aws_apigateway.LambdaIntegration;
     budgetsIntegration: aws_apigateway.LambdaIntegration;
     usersIntegration: aws_apigateway.LambdaIntegration;
     tasksIntegration: aws_apigateway.LambdaIntegration;
+    calendarIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
@@ -42,6 +44,11 @@ export const handleRoutes = (
     integration: budgetsIntegration,
   });
   handleTasksRoutes({ api, authorizerParams, integration: tasksIntegration });
+  handleCalendarRoutes({
+    api,
+    authorizerParams,
+    integration: calendarIntegration,
+  });
   handleUsersRoutes({ api, authorizerParams, integration: usersIntegration });
   handleReceiptsRoutes({
     api,
@@ -179,6 +186,29 @@ const handleTasksRoutes = ({
   taskId.addMethod("GET", integration, authorizerParams);
   taskId.addMethod("PUT", integration, authorizerParams);
   taskId.addMethod("DELETE", integration, authorizerParams);
+};
+
+const handleCalendarRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const calendar = api.root.addResource("calendar");
+  addCorsPreflight(calendar);
+
+  calendar.addMethod("GET", integration, authorizerParams);
+  calendar.addMethod("POST", integration, authorizerParams);
+
+  const calendarEntryId = calendar.addResource("{calendarEntryId}");
+  addCorsPreflight(calendarEntryId);
+
+  calendarEntryId.addMethod("GET", integration, authorizerParams);
+  calendarEntryId.addMethod("PUT", integration, authorizerParams);
+  calendarEntryId.addMethod("DELETE", integration, authorizerParams);
 };
 
 const handleReceiptsRoutes = ({

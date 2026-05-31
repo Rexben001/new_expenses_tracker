@@ -42,6 +42,12 @@ export class ExpensesBeStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
+    const calendarTable = new Table(this, "CalendarTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
     table.addGlobalSecondaryIndex({
       indexName: "UserExpensesIndex",
       partitionKey: { name: "gsiPk", type: AttributeType.STRING },
@@ -93,6 +99,16 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
+    const handleCalendarLambda = new NodejsFunction(this, "HandleCalendarFn", {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      entry: path.join(__dirname, "../src/handlers/handleCalendar/index.ts"),
+      handler: "handler",
+      environment: {
+        ...lambdaEnvironment,
+        TABLE_NAME: calendarTable.tableName,
+      },
+    });
+
     const handleReceiptsLambda = new NodejsFunction(this, "HandleReceiptsFn", {
       runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
       entry: path.join(__dirname, "../src/handlers/handleReceipts/index.ts"),
@@ -137,6 +153,7 @@ export class ExpensesBeStack extends cdk.Stack {
     table.grantReadWriteData(handleUsersLambda);
     table.grantReadWriteData(handleRecurringBudgetsLambda);
     tasksTable.grantReadWriteData(handleTasksLambda);
+    calendarTable.grantReadWriteData(handleCalendarLambda);
 
     const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
       userPoolName: "expenses-user-pool",
@@ -222,6 +239,10 @@ export class ExpensesBeStack extends cdk.Stack {
       handleTasksLambda
     );
 
+    const calendarIntegration = new apigateway.LambdaIntegration(
+      handleCalendarLambda
+    );
+
     const receiptsIntegration = new apigateway.LambdaIntegration(
       handleReceiptsLambda
     );
@@ -259,6 +280,7 @@ export class ExpensesBeStack extends cdk.Stack {
       budgetsIntegration,
       usersIntegration,
       tasksIntegration,
+      calendarIntegration,
       receiptsIntegration,
     });
 
@@ -276,6 +298,9 @@ export class ExpensesBeStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, "TasksTableName", {
       value: tasksTable.tableName,
+    });
+    new cdk.CfnOutput(this, "CalendarTableName", {
+      value: calendarTable.tableName,
     });
   }
 }
