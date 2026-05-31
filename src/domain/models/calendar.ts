@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-export const CalendarStatusSchema = z.enum(["available", "booked"]);
+export const CalendarStatusSchema = z.enum([
+  "available",
+  "booked",
+  "unavailable",
+]);
 
 export const HairStyleOptionSchema = z.enum([
   "kinky",
