@@ -7,7 +7,7 @@ import { DbService } from "../../services/shared/dbService";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
 import { createInvocationLogger } from "../../utils/logger";
-import { errorResponse } from "../../utils/response";
+import { errorResponseFromError } from "../../utils/response";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (event: APIGatewayEvent, context: Context) => {
@@ -73,7 +73,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       }
     } catch (error) {
       logger.error("Error handling calendar request", { error });
-      return errorResponse();
+      return errorResponseFromError(error);
     }
   };
 };

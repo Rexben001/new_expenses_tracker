@@ -11,6 +11,7 @@ import { HttpError } from "../../utils/http-error";
 import { updateUser } from "../../services/users/updateUser";
 import { deleteSubAccount } from "../../services/users/deleteSubAccount";
 import { createInvocationLogger } from "../../utils/logger";
+import { errorResponseFromError } from "../../utils/response";
 
 export const makeHandler = ({ dbService }: { dbService: DbService }) => {
   return async (
@@ -92,13 +93,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       }
     } catch (error) {
       logger.error("Error handling users request", { error });
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          message: "Internal Server Error",
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      };
+      return errorResponseFromError(error);
     }
   };
 };

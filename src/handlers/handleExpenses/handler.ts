@@ -6,7 +6,7 @@ import { getExpenses } from "../../services/expenses/getExpenses";
 import { updateExpenses } from "../../services/expenses/updateExpenses";
 import { deleteExpenses } from "../../services/expenses/deleteExpenses";
 import { getUserId } from "../../utils/getUserId";
-import { errorResponse } from "../../utils/response";
+import { errorResponseFromError } from "../../utils/response";
 import { duplicateExpenses } from "../../services/expenses/duplicateExpense";
 import { createInvocationLogger } from "../../utils/logger";
 import { getExpenseInsights } from "../../services/expenses/getExpenseInsights";
@@ -106,11 +106,11 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         default:
           throw new HttpError("Method not allowed", 405, {
             cause: new Error(`Method ${eventMethod} is not allowed`),
-        });
+          });
       }
     } catch (error) {
       logger.error("Error handling expenses request", { error });
-      return errorResponse();
+      return errorResponseFromError(error);
     }
   };
 };

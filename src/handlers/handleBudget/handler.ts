@@ -6,7 +6,7 @@ import { getBudget } from "../../services/budgets/getBudget";
 import { updateBudgets } from "../../services/budgets/updateBudget";
 import { deleteBudget } from "../../services/budgets/deleteBudget";
 import { getUserId } from "../../utils/getUserId";
-import { errorResponse } from "../../utils/response";
+import { errorResponseFromError } from "../../utils/response";
 import { duplicateBudget } from "../../services/budgets/duplicateBudget";
 import { createInvocationLogger } from "../../utils/logger";
 
@@ -73,7 +73,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
             userId,
             budgetId,
             subAccountId,
-            setIsRecurring
+            setIsRecurring,
           });
         case "DELETE":
           return await deleteBudget({
@@ -85,11 +85,11 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
         default:
           throw new HttpError("Method not allowed", 405, {
             cause: new Error(`Method ${eventMethod} is not allowed`),
-        });
+          });
       }
     } catch (error) {
       logger.error("Error handling budget request", { error });
-      return errorResponse();
+      return errorResponseFromError(error);
     }
   };
 };

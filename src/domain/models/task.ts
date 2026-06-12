@@ -14,6 +14,7 @@ export const TaskSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  assignedTo: z.string().optional(),
   group: z.string().optional(),
   tags: z.array(z.string()).default([]),
   subtasks: z.array(SubTaskSchema).optional().default([]),
@@ -34,6 +35,7 @@ export type Task = z.infer<typeof TaskSchema>;
 export const TaskRequestSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  assignedTo: z.string().optional(),
   group: z.string().optional(),
   tags: z.array(z.string()).optional().default([]),
   subtasks: z.array(SubTaskSchema).optional().default([]),
@@ -52,6 +54,7 @@ export type TaskRequest = z.infer<typeof TaskRequestSchema>;
 export const TaskUpdateRequestSchema = z.object({
   title: z.string().min(1, "Title is required").optional(),
   description: z.string().optional(),
+  assignedTo: z.string().optional(),
   group: z.string().optional(),
   tags: z.array(z.string()).optional(),
   subtasks: z.array(SubTaskSchema).optional(),

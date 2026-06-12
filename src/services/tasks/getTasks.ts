@@ -25,7 +25,7 @@ export const getTasks = async ({
     subAccountId,
   });
 
-  return formatResponse(items);
+  return formatResponse(items, Boolean(taskId));
 };
 
 export async function getTaskItems({
@@ -42,8 +42,12 @@ export async function getTaskItems({
   return items;
 }
 
-const formatResponse = (items: Record<string, any>[]) => {
+const formatResponse = (items: Record<string, any>[], expectsSingle: boolean) => {
   if (items.length === 0) {
+    if (!expectsSingle) {
+      return successResponse([]);
+    }
+
     return errorResponse("No tasks found for the given criteria", 404);
   }
 

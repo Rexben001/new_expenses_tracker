@@ -1,3 +1,5 @@
+import { HttpError } from "./http-error";
+
 const headers = {
   "Access-Control-Allow-Origin": "*", // or your frontend URL
   "Access-Control-Allow-Headers": "Content-Type,Authorization",
@@ -21,4 +23,15 @@ export const errorResponse = (
     headers,
     body: JSON.stringify({ message, statusCode }),
   };
+};
+
+export const errorResponseFromError = (
+  error: unknown,
+  fallbackMessage = "Internal Server Error"
+) => {
+  if (error instanceof HttpError) {
+    return errorResponse(error.message, error.status);
+  }
+
+  return errorResponse(fallbackMessage);
 };

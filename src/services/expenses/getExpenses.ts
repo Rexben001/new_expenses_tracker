@@ -33,7 +33,7 @@ export const getExpenses = async ({
       indexName
     );
 
-    return formatResponse(items);
+    return formatResponse(items, Boolean(expenseId));
   }
 
   const items = await getExpenseItem({
@@ -43,7 +43,7 @@ export const getExpenses = async ({
     budgetId,
     subAccountId,
   });
-  return formatResponse(items);
+  return formatResponse(items, Boolean(expenseId));
 };
 
 export async function getExpenseItem({
@@ -69,8 +69,15 @@ export async function getExpenseItem({
   return items;
 }
 
-const formatResponse = (items: Record<string, any>[]) => {
+const formatResponse = (
+  items: Record<string, any>[],
+  expectsSingle: boolean
+) => {
   if (items.length === 0) {
+    if (!expectsSingle) {
+      return successResponse([]);
+    }
+
     return errorResponse("No expenses found for the given criteria", 404);
   }
 
