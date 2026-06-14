@@ -67,30 +67,31 @@ export class ExpensesBeStack extends cdk.Stack {
       POWERTOOLS_SERVICE_NAME: "expenses-be",
       POWERTOOLS_LOG_LEVEL: "INFO",
     };
+    const lambdaRuntime = cdk.aws_lambda.Runtime.NODEJS_22_X;
 
     const handleExpensesLambda = new NodejsFunction(this, "HandleExpensesFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleExpenses/index.ts"),
       handler: "handler",
       environment: lambdaEnvironment,
     });
 
     const handleBudgetsLambda = new NodejsFunction(this, "HandleBudgetFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleBudget/index.ts"),
       handler: "handler",
       environment: lambdaEnvironment,
     });
 
     const handleUsersLambda = new NodejsFunction(this, "HandleUsersFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleUsers/index.ts"),
       handler: "handler",
       environment: lambdaEnvironment,
     });
 
     const handleTasksLambda = new NodejsFunction(this, "HandleTasksFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleTasks/index.ts"),
       handler: "handler",
       environment: {
@@ -100,7 +101,7 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     const handleCalendarLambda = new NodejsFunction(this, "HandleCalendarFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleCalendar/index.ts"),
       handler: "handler",
       environment: {
@@ -110,7 +111,7 @@ export class ExpensesBeStack extends cdk.Stack {
     });
 
     const handleReceiptsLambda = new NodejsFunction(this, "HandleReceiptsFn", {
-      runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+      runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleReceipts/index.ts"),
       handler: "handler",
       environment: lambdaEnvironment,
@@ -127,7 +128,7 @@ export class ExpensesBeStack extends cdk.Stack {
       this,
       "HandleRecurringBudgetsFn",
       {
-        runtime: cdk.aws_lambda.Runtime.NODEJS_LATEST,
+        runtime: lambdaRuntime,
         entry: path.join(__dirname, "../src/handlers/handleRecurring/index.ts"),
         handler: "handler",
         environment: lambdaEnvironment,
