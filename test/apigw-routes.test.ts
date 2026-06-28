@@ -39,6 +39,7 @@ describe("API Gateway routes", () => {
       tasksIntegration: {} as any,
       calendarIntegration: {} as any,
       receiptsIntegration: {} as any,
+      videosIntegration: {} as any,
     });
 
     expect(
@@ -52,6 +53,7 @@ describe("API Gateway routes", () => {
         "DELETE /expenses/{expenseId}",
         "DELETE /tasks/{taskId}",
         "DELETE /users",
+        "DELETE /video-library/items",
         "GET /budgets",
         "GET /budgets/{budgetId}",
         "GET /calendar",
@@ -62,6 +64,8 @@ describe("API Gateway routes", () => {
         "GET /tasks",
         "GET /tasks/{taskId}",
         "GET /users",
+        "GET /video-library/folders",
+        "GET /video-library/items",
         "POST /budgets",
         "POST /budgets/{budgetId}/duplicates",
         "POST /calendar",
@@ -70,6 +74,7 @@ describe("API Gateway routes", () => {
         "POST /receipts/scan-v2",
         "POST /tasks",
         "POST /users",
+        "POST /video-upload-url",
         "PUT /budgets/{budgetId}",
         "PUT /calendar/{calendarEntryId}",
         "PUT /expenses/{expenseId}",

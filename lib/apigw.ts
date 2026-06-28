@@ -19,6 +19,7 @@ export const handleRoutes = (
     tasksIntegration,
     calendarIntegration,
     receiptsIntegration,
+    videosIntegration,
   }: {
     expensesIntegration: aws_apigateway.LambdaIntegration;
     budgetsIntegration: aws_apigateway.LambdaIntegration;
@@ -26,6 +27,7 @@ export const handleRoutes = (
     tasksIntegration: aws_apigateway.LambdaIntegration;
     calendarIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
+    videosIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
   const authorizerParams = {
@@ -54,6 +56,11 @@ export const handleRoutes = (
     api,
     authorizerParams,
     integration: receiptsIntegration,
+  });
+  handleVideosRoutes({
+    api,
+    authorizerParams,
+    integration: videosIntegration,
   });
 };
 
@@ -227,4 +234,43 @@ const handleReceiptsRoutes = ({
   addCorsPreflight(scanV2);
 
   scanV2.addMethod("POST", integration, authorizerParams);
+};
+
+const handleVideosRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const uploadUrl = api.root.addResource("video-upload-url");
+  addCorsPreflight(uploadUrl);
+  uploadUrl.addMethod("POST", integration, authorizerParams);
+
+  const library = api.root.addResource("video-library");
+  addCorsPreflight(library);
+
+  const items = library.addResource("items");
+  addCorsPreflight(items);
+  const itemMethodOptions: MethodOptions = {
+    ...authorizerParams,
+    requestParameters: {
+      "method.request.querystring.cursor": false,
+      "method.request.querystring.limit": false,
+      "method.request.querystring.prefix": false,
+    },
+  };
+  items.addMethod("GET", integration, itemMethodOptions);
+  items.addMethod("DELETE", integration, itemMethodOptions);
+
+  const folders = library.addResource("folders");
+  addCorsPreflight(folders);
+  folders.addMethod("GET", integration, {
+    ...authorizerParams,
+    requestParameters: {
+      "method.request.querystring.root": false,
+    },
+  });
 };

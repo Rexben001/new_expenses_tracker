@@ -24,6 +24,10 @@ import {
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 
+const IPHONE_VIDEO_BUCKET_NAME =
+  "awsnewsagentstack-iphonevideobucket977048a4-v9ijkwtg6evz";
+const IPHONE_VIDEO_PREFIX = "iphone-videos";
+
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, {
@@ -117,10 +121,51 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: lambdaEnvironment,
     });
 
+    const handleVideosLambda = new NodejsFunction(this, "HandleVideosFn", {
+      runtime: lambdaRuntime,
+      entry: path.join(__dirname, "../src/handlers/handleVideos/index.ts"),
+      handler: "handler",
+      environment: {
+        ...lambdaEnvironment,
+        VIDEO_UPLOAD_BUCKET_NAME: IPHONE_VIDEO_BUCKET_NAME,
+        VIDEO_UPLOAD_PREFIX: IPHONE_VIDEO_PREFIX,
+        VIDEO_LIBRARY_PREFIX: IPHONE_VIDEO_PREFIX,
+        VIDEO_UPLOAD_URL_EXPIRES_SECONDS: "900",
+        VIDEO_LIBRARY_URL_EXPIRES_SECONDS: "900",
+      },
+    });
+
     handleReceiptsLambda.addToRolePolicy(
       new PolicyStatement({
         actions: ["textract:AnalyzeExpense"],
         resources: ["*"],
+      })
+    );
+
+    handleVideosLambda.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["s3:ListBucket"],
+        resources: [`arn:aws:s3:::${IPHONE_VIDEO_BUCKET_NAME}`],
+        conditions: {
+          StringLike: {
+            "s3:prefix": [
+              IPHONE_VIDEO_PREFIX,
+              `${IPHONE_VIDEO_PREFIX}/*`,
+            ],
+          },
+        },
+      })
+    );
+    handleVideosLambda.addToRolePolicy(
+      new PolicyStatement({
+        actions: [
+          "s3:DeleteObject",
+          "s3:GetObject",
+          "s3:PutObject",
+        ],
+        resources: [
+          `arn:aws:s3:::${IPHONE_VIDEO_BUCKET_NAME}/${IPHONE_VIDEO_PREFIX}/*`,
+        ],
       })
     );
 
@@ -248,6 +293,10 @@ export class ExpensesBeStack extends cdk.Stack {
       handleReceiptsLambda
     );
 
+    const videosIntegration = new apigateway.LambdaIntegration(
+      handleVideosLambda
+    );
+
     new apigateway.GatewayResponse(this, "UnauthorizedResponse", {
       restApi: api,
       type: apigateway.ResponseType.UNAUTHORIZED, // 401
@@ -283,6 +332,7 @@ export class ExpensesBeStack extends cdk.Stack {
       tasksIntegration,
       calendarIntegration,
       receiptsIntegration,
+      videosIntegration,
     });
 
     const deploymentStage = api.deploymentStage.node.defaultChild as CfnStage;
