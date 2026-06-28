@@ -2,6 +2,7 @@ import type { APIGatewayEvent, Context } from "aws-lambda";
 import { makeHandler as makeBudgetHandler } from "../src/handlers/handleBudget/handler";
 import { makeHandler as makeCalendarHandler } from "../src/handlers/handleCalendar/handler";
 import { makeHandler as makeExpensesHandler } from "../src/handlers/handleExpenses/handler";
+import { makeHandler as makeHowToHandler } from "../src/handlers/handleHowTo/handler";
 import { makeHandler as makeReceiptsHandler } from "../src/handlers/handleReceipts/handler";
 import { makeHandler as makeTasksHandler } from "../src/handlers/handleTasks/handler";
 import { makeHandler as makeUsersHandler } from "../src/handlers/handleUsers/handler";
@@ -451,6 +452,39 @@ describe("videos API handler", () => {
       statusCode: 403,
     });
     expect(s3Client.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("how-to API handler", () => {
+  const dbService = {
+    deleteItem: jest.fn(),
+    getItem: jest.fn(),
+    putItem: jest.fn(),
+    queryItems: jest.fn(),
+    scanItems: jest.fn(),
+    updateItem: jest.fn(),
+    deleteItemsByPrefix: jest.fn(),
+  } as DbService;
+  const kmsClient = { send: jest.fn() };
+  const handler = makeHowToHandler({ dbService, kmsClient } as any);
+
+  test("returns 403 for non-admin users before data access", async () => {
+    const response = await handler(
+      apiEvent({
+        method: "GET",
+        path: "/how-to",
+        claims: { email: "guest@example.com" },
+      }),
+      mockContext
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(parseBody(response)).toEqual({
+      message: "Admin access required",
+      statusCode: 403,
+    });
+    expect(dbService.queryItems).not.toHaveBeenCalled();
+    expect(kmsClient.send).not.toHaveBeenCalled();
   });
 });
 

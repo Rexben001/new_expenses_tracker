@@ -4,6 +4,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as kms from "aws-cdk-lib/aws-kms";
 
 import { handleRoutes } from "./apigw";
 import {
@@ -56,6 +57,18 @@ export class ExpensesBeStack extends cdk.Stack {
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
+    const howToTable = new Table(this, "HowToTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
+    const howToSecretsKey = new kms.Key(this, "HowToSecretsKey", {
+      alias: "alias/expenses-how-to-secrets",
+      description: "Encrypts How-To service secret fields",
+      enableKeyRotation: true,
     });
 
     table.addGlobalSecondaryIndex({
@@ -117,6 +130,18 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: {
         ...lambdaEnvironment,
         TABLE_NAME: calendarTable.tableName,
+        ADMIN_EMAILS,
+      },
+    });
+
+    const handleHowToLambda = new NodejsFunction(this, "HandleHowToFn", {
+      runtime: lambdaRuntime,
+      entry: path.join(__dirname, "../src/handlers/handleHowTo/index.ts"),
+      handler: "handler",
+      environment: {
+        ...lambdaEnvironment,
+        TABLE_NAME: howToTable.tableName,
+        HOW_TO_KMS_KEY_ID: howToSecretsKey.keyId,
         ADMIN_EMAILS,
       },
     });
@@ -208,6 +233,8 @@ export class ExpensesBeStack extends cdk.Stack {
     table.grantReadWriteData(handleRecurringBudgetsLambda);
     tasksTable.grantReadWriteData(handleTasksLambda);
     calendarTable.grantReadWriteData(handleCalendarLambda);
+    howToTable.grantReadWriteData(handleHowToLambda);
+    howToSecretsKey.grantEncryptDecrypt(handleHowToLambda);
 
     const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
       userPoolName: "expenses-user-pool",
@@ -297,6 +324,10 @@ export class ExpensesBeStack extends cdk.Stack {
       handleCalendarLambda
     );
 
+    const howToIntegration = new apigateway.LambdaIntegration(
+      handleHowToLambda
+    );
+
     const receiptsIntegration = new apigateway.LambdaIntegration(
       handleReceiptsLambda
     );
@@ -339,6 +370,7 @@ export class ExpensesBeStack extends cdk.Stack {
       usersIntegration,
       tasksIntegration,
       calendarIntegration,
+      howToIntegration,
       receiptsIntegration,
       videosIntegration,
     });
@@ -360,6 +392,9 @@ export class ExpensesBeStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, "CalendarTableName", {
       value: calendarTable.tableName,
+    });
+    new cdk.CfnOutput(this, "HowToTableName", {
+      value: howToTable.tableName,
     });
   }
 }

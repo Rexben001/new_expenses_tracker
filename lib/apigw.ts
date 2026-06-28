@@ -18,6 +18,7 @@ export const handleRoutes = (
     usersIntegration,
     tasksIntegration,
     calendarIntegration,
+    howToIntegration,
     receiptsIntegration,
     videosIntegration,
   }: {
@@ -26,6 +27,7 @@ export const handleRoutes = (
     usersIntegration: aws_apigateway.LambdaIntegration;
     tasksIntegration: aws_apigateway.LambdaIntegration;
     calendarIntegration: aws_apigateway.LambdaIntegration;
+    howToIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
     videosIntegration: aws_apigateway.LambdaIntegration;
   }
@@ -50,6 +52,11 @@ export const handleRoutes = (
     api,
     authorizerParams,
     integration: calendarIntegration,
+  });
+  handleHowToRoutes({
+    api,
+    authorizerParams,
+    integration: howToIntegration,
   });
   handleUsersRoutes({ api, authorizerParams, integration: usersIntegration });
   handleReceiptsRoutes({
@@ -216,6 +223,44 @@ const handleCalendarRoutes = ({
   calendarEntryId.addMethod("GET", integration, authorizerParams);
   calendarEntryId.addMethod("PUT", integration, authorizerParams);
   calendarEntryId.addMethod("DELETE", integration, authorizerParams);
+};
+
+const handleHowToRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const howTo = api.root.addResource("how-to");
+  addCorsPreflight(howTo);
+
+  const listMethodOptions: MethodOptions = {
+    ...authorizerParams,
+    requestParameters: {
+      "method.request.querystring.category": false,
+      "method.request.querystring.cursor": false,
+      "method.request.querystring.limit": false,
+      "method.request.querystring.query": false,
+      "method.request.querystring.tag": false,
+    },
+  };
+
+  howTo.addMethod("GET", integration, listMethodOptions);
+  howTo.addMethod("POST", integration, authorizerParams);
+
+  const howToId = howTo.addResource("{howToId}");
+  addCorsPreflight(howToId);
+
+  howToId.addMethod("GET", integration, authorizerParams);
+  howToId.addMethod("PUT", integration, authorizerParams);
+  howToId.addMethod("DELETE", integration, authorizerParams);
+
+  const secrets = howToId.addResource("secrets");
+  addCorsPreflight(secrets);
+  secrets.addMethod("GET", integration, authorizerParams);
 };
 
 const handleReceiptsRoutes = ({
