@@ -16,6 +16,23 @@ export const HowToSecretInputSchema = z.object({
   value: z.string().max(3000),
 });
 
+export const HowToPaymentDetailsSchema = z
+  .object({
+    totalAmount: z.number().nonnegative().nullable().optional().default(null),
+    currency: z.string().trim().max(8).optional().default("EUR"),
+    monthlyDeductionDay: z
+      .number()
+      .int()
+      .min(1)
+      .max(31)
+      .nullable()
+      .optional()
+      .default(null),
+    notes: z.string().max(1000).optional().default(""),
+  })
+  .optional()
+  .default({});
+
 export const HowToCreateRequestSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(160),
   category: z.string().trim().max(120).optional().default(""),
@@ -24,6 +41,7 @@ export const HowToCreateRequestSchema = z.object({
   summary: z.string().max(2000).optional().default(""),
   contentJson: z.unknown().optional(),
   loginDetails: HowToLoginDetailsSchema,
+  paymentDetails: HowToPaymentDetailsSchema,
   secrets: z.array(HowToSecretInputSchema).optional().default([]),
 });
 

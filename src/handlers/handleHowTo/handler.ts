@@ -35,6 +35,12 @@ type HowToItem = {
     username: string;
     notes: string;
   };
+  paymentDetails: {
+    totalAmount: number | null;
+    currency: string;
+    monthlyDeductionDay: number | null;
+    notes: string;
+  };
   encryptedSecrets?: EncryptedSecret[];
   hasSecrets: boolean;
   secretLabels: SecretLabel[];
@@ -191,6 +197,7 @@ async function createHowToItem({
     contentJson,
     contentPlainText,
     loginDetails: normalizeLoginDetails(parsed.loginDetails),
+    paymentDetails: normalizePaymentDetails(parsed.paymentDetails),
     encryptedSecrets,
     hasSecrets: encryptedSecrets.length > 0,
     secretLabels,
@@ -250,6 +257,9 @@ async function updateHowToItem({
   }
   if (parsed.loginDetails !== undefined) {
     patch.loginDetails = normalizeLoginDetails(parsed.loginDetails);
+  }
+  if (parsed.paymentDetails !== undefined) {
+    patch.paymentDetails = normalizePaymentDetails(parsed.paymentDetails);
   }
   if ("secrets" in body) {
     const encryptedSecrets = await encryptSecrets({
@@ -518,6 +528,12 @@ function buildSearchText(item: HowToItem) {
       item.loginDetails.email,
       item.loginDetails.username,
       item.loginDetails.notes,
+      item.paymentDetails?.totalAmount,
+      item.paymentDetails?.currency,
+      item.paymentDetails?.monthlyDeductionDay
+        ? `deducted day ${item.paymentDetails.monthlyDeductionDay}`
+        : "",
+      item.paymentDetails?.notes,
     ].join(" ")
   );
 }
@@ -560,6 +576,39 @@ function normalizeLoginDetails(
     email: normalizeEmail(loginDetails?.email),
     username: normalizeTextField(loginDetails?.username),
     notes: normalizeTextField(loginDetails?.notes),
+  };
+}
+
+function normalizePaymentDetails(
+  paymentDetails: Record<string, unknown> | undefined
+) {
+  const rawTotalAmount = paymentDetails?.totalAmount;
+  const rawMonthlyDeductionDay = paymentDetails?.monthlyDeductionDay;
+  const totalAmount =
+    rawTotalAmount === null ||
+    rawTotalAmount === undefined ||
+    rawTotalAmount === ""
+      ? Number.NaN
+      : Number(rawTotalAmount);
+  const monthlyDeductionDay =
+    rawMonthlyDeductionDay === null ||
+    rawMonthlyDeductionDay === undefined ||
+    rawMonthlyDeductionDay === ""
+      ? Number.NaN
+      : Number(rawMonthlyDeductionDay);
+
+  return {
+    totalAmount:
+      Number.isFinite(totalAmount) && totalAmount >= 0 ? totalAmount : null,
+    currency:
+      normalizeTextField(paymentDetails?.currency).toUpperCase() || "EUR",
+    monthlyDeductionDay:
+      Number.isInteger(monthlyDeductionDay) &&
+      monthlyDeductionDay >= 1 &&
+      monthlyDeductionDay <= 31
+        ? monthlyDeductionDay
+        : null,
+    notes: normalizeTextField(paymentDetails?.notes),
   };
 }
 

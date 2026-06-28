@@ -268,6 +268,12 @@ describe("API response behavior", () => {
             url: "https://insurer.example",
             email: "admin@example.com",
           },
+          paymentDetails: {
+            totalAmount: 25.5,
+            currency: "EUR",
+            monthlyDeductionDay: 17,
+            notes: "Deducted from current account",
+          },
           secrets: [{ label: "Password", value: "secret-pass" }],
         }),
       }),
@@ -282,6 +288,12 @@ describe("API response behavior", () => {
     ]);
     expect(created.encryptedSecrets).toBeUndefined();
     expect(created.searchText).toBeUndefined();
+    expect(created.paymentDetails).toEqual({
+      totalAmount: 25.5,
+      currency: "EUR",
+      monthlyDeductionDay: 17,
+      notes: "Deducted from current account",
+    });
 
     const listResponse = await handler(
       howToApiEvent({
@@ -302,6 +314,16 @@ describe("API response behavior", () => {
       })
     );
     expect(listBody.items[0].encryptedSecrets).toBeUndefined();
+
+    const paymentSearchResponse = await handler(
+      howToApiEvent({
+        method: "GET",
+        path: "/how-to",
+        queryStringParameters: { query: "25.5" },
+      }),
+      {} as Context
+    );
+    expect(parseBody(paymentSearchResponse).total).toBe(1);
 
     const revealResponse = await handler(
       howToApiEvent({
