@@ -5,6 +5,7 @@ import { makeHandler as makeExpensesHandler } from "../src/handlers/handleExpens
 import { makeHandler as makeReceiptsHandler } from "../src/handlers/handleReceipts/handler";
 import { makeHandler as makeTasksHandler } from "../src/handlers/handleTasks/handler";
 import { makeHandler as makeUsersHandler } from "../src/handlers/handleUsers/handler";
+import { makeHandler as makeVideosHandler } from "../src/handlers/handleVideos/handler";
 import { createBudget } from "../src/services/budgets/createBudget";
 import { deleteBudget } from "../src/services/budgets/deleteBudget";
 import { duplicateBudget } from "../src/services/budgets/duplicateBudget";
@@ -126,6 +127,7 @@ const okResponse = {
 
 const mockDbService = {} as DbService;
 const mockContext = {} as Context;
+const adminEmail = "rexben.rb@gmail.com";
 
 const mockedServices = [
   createBudget,
@@ -160,12 +162,14 @@ function apiEvent({
   path,
   pathParameters = {},
   queryStringParameters = {},
+  claims = {},
 }: {
   body?: string | null;
   method: string;
   path: string;
   pathParameters?: Record<string, string>;
   queryStringParameters?: Record<string, string>;
+  claims?: Record<string, string>;
 }) {
   return {
     body,
@@ -177,6 +181,8 @@ function apiEvent({
       authorizer: {
         claims: {
           sub: "user-1",
+          email: adminEmail,
+          ...claims,
         },
       },
     },
@@ -403,6 +409,48 @@ describe("calendar API handler", () => {
     );
 
     expect(response.statusCode).toBe(405);
+  });
+
+  test("returns 403 for non-admin users", async () => {
+    const response = await handler(
+      apiEvent({
+        method: "GET",
+        path: "/calendar",
+        claims: { email: "guest@example.com" },
+      }),
+      mockContext
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(parseBody(response)).toEqual({
+      message: "Admin access required",
+      statusCode: 403,
+    });
+    expect(getCalendarEntries).not.toHaveBeenCalled();
+  });
+});
+
+describe("videos API handler", () => {
+  const s3Client = { send: jest.fn() };
+  const handler = makeVideosHandler({ s3Client } as any);
+
+  test("returns 403 for non-admin users before S3 access", async () => {
+    const response = await handler(
+      apiEvent({
+        method: "GET",
+        path: "/video-library/items",
+        queryStringParameters: { prefix: "iphone-videos" },
+        claims: { email: "guest@example.com" },
+      }),
+      mockContext
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(parseBody(response)).toEqual({
+      message: "Admin access required",
+      statusCode: 403,
+    });
+    expect(s3Client.send).not.toHaveBeenCalled();
   });
 });
 

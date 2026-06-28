@@ -9,6 +9,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { assertAdmin } from "../../utils/admin";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
 import { createInvocationLogger } from "../../utils/logger";
@@ -57,6 +58,7 @@ export const makeHandler = ({ s3Client }: { s3Client: S3Client }) => {
     });
 
     try {
+      assertAdmin(event);
       getUserId(event);
 
       if (event.httpMethod === "POST" && event.path.endsWith("/video-upload-url")) {

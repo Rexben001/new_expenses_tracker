@@ -27,6 +27,12 @@ import {
 const IPHONE_VIDEO_BUCKET_NAME =
   "awsnewsagentstack-iphonevideobucket977048a4-v9ijkwtg6evz";
 const IPHONE_VIDEO_PREFIX = "iphone-videos";
+const ADMIN_EMAILS = [
+  "rexben.rb@gmail.com",
+  "hello@benjaminajewole.com",
+  "dollyrexben@gmail.com",
+  "tmgbolade.96@gmail.com",
+].join(",");
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -111,6 +117,7 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: {
         ...lambdaEnvironment,
         TABLE_NAME: calendarTable.tableName,
+        ADMIN_EMAILS,
       },
     });
 
@@ -132,6 +139,7 @@ export class ExpensesBeStack extends cdk.Stack {
         VIDEO_LIBRARY_PREFIX: IPHONE_VIDEO_PREFIX,
         VIDEO_UPLOAD_URL_EXPIRES_SECONDS: "900",
         VIDEO_LIBRARY_URL_EXPIRES_SECONDS: "900",
+        ADMIN_EMAILS,
       },
     });
 

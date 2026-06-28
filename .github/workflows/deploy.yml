@@ -22,9 +22,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install AWS CDK
-        run: npm install -g aws-cdk
-
       - name: Set environment
         id: set-env
         run: |
@@ -43,7 +40,7 @@ jobs:
           aws-region: eu-west-1
 
       - name: CDK Bootstrap
-        run: cdk bootstrap
+        run: npm run cdk -- bootstrap --context env=${{ steps.set-env.outputs.env_name }}
 
       - name: Deploy CDK Stack
-        run: cdk deploy --require-approval never --context env=${{ steps.set-env.outputs.env_name }} --outputs-file cdk-outputs.json
+        run: npm run cdk -- deploy --require-approval never --context env=${{ steps.set-env.outputs.env_name }} --outputs-file cdk-outputs.json

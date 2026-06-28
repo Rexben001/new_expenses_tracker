@@ -8,7 +8,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "node ./node_modules/aws-cdk/bin/cdk"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.161",
@@ -21,8 +21,6 @@
     "typescript": "~5.4.5"
   },
   "dependencies": {
-    "@aws-cdk/aws-apigateway": "^1.204.0",
-    "@aws-cdk/aws-cognito": "^1.204.0",
     "@aws-lambda-powertools/logger": "^2.31.0",
     "@aws-sdk/client-dynamodb": "^3.821.0",
     "@aws-sdk/client-s3": "^3.821.0",
@@ -32,7 +30,6 @@
     "app": "^0.1.0",
     "aws-cdk-lib": "^2.259.0",
     "aws-lambda": "^1.0.7",
-    "cdk": "^2.1017.1",
     "constructs": "^10.6.0",
     "date-fns": "^4.1.0",
     "esbuild": "~0.21",

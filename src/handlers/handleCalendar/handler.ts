@@ -4,6 +4,7 @@ import { deleteCalendarEntry } from "../../services/calendar/deleteCalendarEntry
 import { getCalendarEntries } from "../../services/calendar/getCalendarEntries";
 import { updateCalendarEntry } from "../../services/calendar/updateCalendarEntry";
 import { DbService } from "../../services/shared/dbService";
+import { assertAdmin } from "../../utils/admin";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
 import { createInvocationLogger } from "../../utils/logger";
@@ -19,6 +20,7 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
 
     try {
       const eventMethod = event.httpMethod;
+      assertAdmin(event);
       const userId = getUserId(event);
       const calendarEntryId = event.pathParameters?.calendarEntryId;
       const subAccountId = event.queryStringParameters?.subId;
