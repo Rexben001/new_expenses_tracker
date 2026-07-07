@@ -1,4 +1,6 @@
 import type { APIGatewayEvent, Context } from "aws-lambda";
+import { createCalendarEntry } from "../src/services/calendar/createCalendarEntry";
+import { updateCalendarEntry } from "../src/services/calendar/updateCalendarEntry";
 import { createTask } from "../src/services/tasks/createTask";
 import { makeHandler as makeHowToHandler } from "../src/handlers/handleHowTo/handler";
 import { getExpenses } from "../src/services/expenses/getExpenses";
@@ -198,6 +200,90 @@ describe("API response behavior", () => {
       })
     );
     expect(parseBody(response).item.assignedTo).toBe("Tola");
+  });
+
+  test("calendar creation stores client prices and braid styles", async () => {
+    const dbService = makeDbService();
+
+    const response = await createCalendarEntry({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        clients: [
+          {
+            hairStyle: {
+              length: "waist",
+              size: "medium",
+              style: "fulani braids",
+            },
+            name: "Ada",
+            price: 125.129,
+            startTime: "10:00",
+          },
+        ],
+        date: "2026-07-07",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clients: [
+          expect.objectContaining({
+            hairStyle: expect.objectContaining({
+              style: "fulani braids",
+            }),
+            name: "Ada",
+            price: 125.13,
+            startTime: "10:00",
+          }),
+        ],
+      })
+    );
+  });
+
+  test("calendar updates store client prices and stitch braids", async () => {
+    const dbService = makeDbService();
+
+    await updateCalendarEntry({
+      dbService,
+      userId: "user-1",
+      calendarEntryId: "calendar-1",
+      body: JSON.stringify({
+        clients: [
+          {
+            hairStyle: {
+              length: "bra",
+              size: "large",
+              style: "stitch braids",
+            },
+            name: "Bea",
+            price: 90,
+            startTime: "12:00",
+          },
+        ],
+      }),
+    });
+
+    expect(dbService.updateItem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("#clients = :clients"),
+      expect.objectContaining({
+        "#clients": "clients",
+      }),
+      expect.objectContaining({
+        ":clients": [
+          expect.objectContaining({
+            hairStyle: expect.objectContaining({
+              style: "stitch braids",
+            }),
+            name: "Bea",
+            price: 90,
+            startTime: "12:00",
+          }),
+        ],
+      })
+    );
   });
 
   test("expense list requests return an empty array when there are no expenses", async () => {

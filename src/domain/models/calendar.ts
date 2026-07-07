@@ -10,8 +10,11 @@ export const HairStyleOptionSchema = z.enum([
   "kinky",
   "boho",
   "knotless",
+  "cornrows",
   "ghana weaving",
   "jayda wayda",
+  "fulani braids",
+  "stitch braids",
 ]);
 
 export const HairSizeOptionSchema = z.enum([
@@ -35,6 +38,7 @@ export const CalendarClientSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Client name is required"),
   startTime: z.string().optional(),
+  price: z.number().nonnegative().optional(),
   hairStyle: HairStyleSchema.optional().default({
     style: "knotless",
     size: "medium",

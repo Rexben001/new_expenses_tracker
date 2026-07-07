@@ -59,6 +59,7 @@ function normalizeClients(clients?: CalendarClient[]) {
       id: client.id || randomUUID(),
       name: client.name.trim(),
       startTime: client.startTime,
+      price: normalizeClientPrice(client.price),
       hairStyle: {
         style: client.hairStyle?.style ?? "knotless",
         size: client.hairStyle?.size ?? "medium",
@@ -67,6 +68,12 @@ function normalizeClients(clients?: CalendarClient[]) {
       },
     }))
     .filter((client) => client.name);
+}
+
+function normalizeClientPrice(price?: number) {
+  if (price === undefined) return undefined;
+
+  return Math.round(price * 100) / 100;
 }
 
 const parseEventBody = (body: string): CalendarEntryRequest => {
