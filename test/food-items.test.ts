@@ -86,6 +86,49 @@ describe("food item service", () => {
     );
   });
 
+  test("stores fruit and vegetable purchase dates", async () => {
+    const dbService = makeDbService();
+    const response = await createFoodItem({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        ...JSON.parse(validBody),
+        name: "Apples",
+        category: "fruit",
+        boughtDate: "2026-07-20",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        boughtDate: "2026-07-20",
+        category: "fruit",
+      })
+    );
+  });
+
+  test("stores fruit purchase dates", async () => {
+    const dbService = makeDbService();
+    await createFoodItem({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        ...JSON.parse(validBody),
+        name: "Apples",
+        category: "fruit",
+        boughtDate: "2026-07-16",
+      }),
+    });
+
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        boughtDate: "2026-07-16",
+        category: "fruit",
+      })
+    );
+  });
+
   test("rejects invalid quantities", async () => {
     const dbService = makeDbService();
 

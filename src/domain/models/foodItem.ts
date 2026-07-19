@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const FoodCategorySchema = z.enum([
   "food",
+  "fruit",
+  "vegetable",
   "drink",
   "spice",
   "ingredient",
@@ -30,6 +32,7 @@ const FoodItemFields = {
   unit: z.string().trim().min(1, "Unit is required").max(40),
   minimumQuantity: z.number().finite().min(0),
   expiryDate: OptionalDateSchema,
+  boughtDate: OptionalDateSchema,
   cookedDate: OptionalDateSchema,
   location: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(500).optional(),
@@ -53,6 +56,7 @@ export const FoodItemUpdateRequestSchema = z
     unit: FoodItemFields.unit,
     minimumQuantity: FoodItemFields.minimumQuantity,
     expiryDate: FoodItemFields.expiryDate,
+    boughtDate: FoodItemFields.boughtDate,
     cookedDate: FoodItemFields.cookedDate,
     location: FoodItemFields.location,
     notes: FoodItemFields.notes,
