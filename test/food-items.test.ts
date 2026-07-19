@@ -1,0 +1,207 @@
+import type { APIGatewayEvent, Context } from "aws-lambda";
+import { makeHandler } from "../src/handlers/handleFoodItems/handler";
+import { createFoodItem } from "../src/services/foodItems/createFoodItem";
+import { deleteFoodItem } from "../src/services/foodItems/deleteFoodItem";
+import { getFoodItems } from "../src/services/foodItems/getFoodItems";
+import { getFoodStats } from "../src/services/foodItems/getFoodStats";
+import { updateFoodItem } from "../src/services/foodItems/updateFoodItem";
+import type { DbService } from "../src/services/shared/dbService";
+
+jest.mock("../src/utils/logger", () => ({
+  createInvocationLogger: () => ({ error: jest.fn(), info: jest.fn() }),
+}));
+
+function makeDbService(items: Record<string, any>[] = []) {
+  return {
+    putItem: jest.fn().mockResolvedValue(undefined),
+    queryItems: jest.fn().mockResolvedValue(items),
+    updateItem: jest.fn().mockResolvedValue({
+      id: "food-1",
+      name: "Rice",
+      quantity: 1,
+      updatedAt: "2026-07-19T10:00:00.000Z",
+    }),
+    deleteItem: jest.fn().mockResolvedValue(undefined),
+  } as unknown as DbService;
+}
+
+function parseBody(response: { body: string }) {
+  return JSON.parse(response.body);
+}
+
+const validBody = JSON.stringify({
+  name: "Rice",
+  category: "food",
+  quantity: 2,
+  unit: "kg",
+  minimumQuantity: 1,
+  expiryDate: "2026-12-01",
+  location: "Pantry",
+  notes: "Basmati",
+  buy: false,
+});
+
+describe("food item service", () => {
+  test("creates account-scoped food items", async () => {
+    const dbService = makeDbService();
+    const response = await createFoodItem({
+      dbService,
+      body: validBody,
+      userId: "user-1",
+      subAccountId: "kitchen-1",
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        PK: "USER#user-1#SUB#kitchen-1",
+        SK: expect.stringMatching(/^FOOD_ITEM#/),
+        name: "Rice",
+        quantity: 2,
+      })
+    );
+  });
+
+  test("rejects invalid quantities", async () => {
+    const dbService = makeDbService();
+
+    await expect(
+      createFoodItem({
+        dbService,
+        body: JSON.stringify({ ...JSON.parse(validBody), quantity: -1 }),
+        userId: "user-1",
+      })
+    ).rejects.toMatchObject({ message: "Invalid request body", status: 400 });
+    expect(dbService.putItem).not.toHaveBeenCalled();
+  });
+
+  test("lists food items under food sort keys", async () => {
+    const dbService = makeDbService([]);
+    const response = await getFoodItems({ dbService, userId: "user-1" });
+
+    expect(response.statusCode).toBe(200);
+    expect(parseBody(response)).toEqual([]);
+    expect(dbService.queryItems).toHaveBeenCalledWith(
+      "PK = :pk AND begins_with(SK, :skPrefix)",
+      expect.objectContaining({ ":skPrefix": { S: "FOOD_ITEM#" } })
+    );
+  });
+
+  test("hides finished and wasted items from active inventory", async () => {
+    const dbService = makeDbService([
+      { id: "active", lifecycleStatus: "active", updatedAt: "2026-07-19" },
+      { id: "legacy", updatedAt: "2026-07-18" },
+      { id: "finished", lifecycleStatus: "finished", updatedAt: "2026-07-17" },
+      { id: "wasted", lifecycleStatus: "wasted", updatedAt: "2026-07-16" },
+    ]);
+
+    const response = await getFoodItems({ dbService, userId: "user-1" });
+    expect(parseBody(response).map((item: { id: string }) => item.id)).toEqual([
+      "active",
+      "legacy",
+    ]);
+  });
+
+  test("calculates current-month savings and waste stats", async () => {
+    const dbService = makeDbService([
+      {
+        completedAt: "2026-07-10T10:00:00.000Z",
+        lifecycleStatus: "finished",
+        estimatedValue: 8.25,
+        estimatedWeightKg: 1.2,
+      },
+      {
+        completedAt: "2026-07-11T10:00:00.000Z",
+        lifecycleStatus: "wasted",
+        estimatedValue: 3,
+        estimatedWeightKg: 0.4,
+      },
+      {
+        completedAt: "2026-06-30T10:00:00.000Z",
+        lifecycleStatus: "finished",
+        estimatedValue: 20,
+        estimatedWeightKg: 2,
+      },
+    ]);
+
+    const response = await getFoodStats({
+      dbService,
+      userId: "user-1",
+      now: new Date("2026-07-19T12:00:00.000Z"),
+    });
+
+    expect(parseBody(response)).toEqual({
+      period: "2026-07",
+      finishedCount: 1,
+      wastedCount: 1,
+      savedWeightKg: 1.2,
+      wastedWeightKg: 0.4,
+      estimatedSavings: 8.25,
+    });
+  });
+
+  test("updates and deletes food items by account key", async () => {
+    const dbService = makeDbService();
+
+    const updateResponse = await updateFoodItem({
+      dbService,
+      body: JSON.stringify({
+        quantity: 1,
+        buy: true,
+        opened: true,
+        lifecycleStatus: "finished",
+        completedAt: "2026-07-19T10:00:00.000Z",
+      }),
+      userId: "user-1",
+      foodItemId: "food-1",
+    });
+    const deleteResponse = await deleteFoodItem({
+      dbService,
+      userId: "user-1",
+      foodItemId: "food-1",
+    });
+
+    expect(updateResponse.statusCode).toBe(200);
+    expect(dbService.updateItem).toHaveBeenCalledWith(
+      { PK: "USER#user-1", SK: "FOOD_ITEM#food-1" },
+      expect.stringContaining("#quantity = :quantity"),
+      expect.anything(),
+      expect.objectContaining({
+        ":buy": true,
+        ":quantity": 1,
+        ":opened": true,
+        ":lifecycleStatus": "finished",
+      })
+    );
+    expect(deleteResponse.statusCode).toBe(200);
+    expect(dbService.deleteItem).toHaveBeenCalledWith({
+      PK: "USER#user-1",
+      SK: "FOOD_ITEM#food-1",
+    });
+  });
+});
+
+describe("food item handler", () => {
+  test("rejects unsupported methods", async () => {
+    const handler = makeHandler({ dbService: makeDbService() });
+    const response = await handler(
+      {
+        body: "",
+        httpMethod: "PATCH",
+        path: "/food-items",
+        pathParameters: null,
+        queryStringParameters: null,
+        requestContext: {
+          authorizer: { claims: { sub: "user-1" } },
+        },
+      } as unknown as APIGatewayEvent,
+      {} as Context
+    );
+
+    expect(response.statusCode).toBe(405);
+    expect(parseBody(response)).toEqual({
+      message: "Method not allowed",
+      statusCode: 405,
+    });
+  });
+});
