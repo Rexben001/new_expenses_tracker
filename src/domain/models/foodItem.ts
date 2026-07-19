@@ -5,6 +5,8 @@ export const FoodCategorySchema = z.enum([
   "drink",
   "spice",
   "ingredient",
+  "soup",
+  "cooked",
   "other",
 ]);
 
@@ -28,6 +30,7 @@ const FoodItemFields = {
   unit: z.string().trim().min(1, "Unit is required").max(40),
   minimumQuantity: z.number().finite().min(0),
   expiryDate: OptionalDateSchema,
+  cookedDate: OptionalDateSchema,
   location: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(500).optional(),
   buy: z.boolean(),
@@ -50,6 +53,7 @@ export const FoodItemUpdateRequestSchema = z
     unit: FoodItemFields.unit,
     minimumQuantity: FoodItemFields.minimumQuantity,
     expiryDate: FoodItemFields.expiryDate,
+    cookedDate: FoodItemFields.cookedDate,
     location: FoodItemFields.location,
     notes: FoodItemFields.notes,
     buy: FoodItemFields.buy,

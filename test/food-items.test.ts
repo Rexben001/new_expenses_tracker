@@ -62,6 +62,30 @@ describe("food item service", () => {
     );
   });
 
+  test("stores cooked food details and serving quantities", async () => {
+    const dbService = makeDbService();
+    const response = await createFoodItem({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        ...JSON.parse(validBody),
+        name: "Chicken soup",
+        category: "soup",
+        unit: "servings",
+        cookedDate: "2026-07-19",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "soup",
+        cookedDate: "2026-07-19",
+        unit: "servings",
+      })
+    );
+  });
+
   test("rejects invalid quantities", async () => {
     const dbService = makeDbService();
 

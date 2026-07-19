@@ -31,6 +31,7 @@ export const createFoodItem = async ({
     userId,
     subAccountId: subAccountId ?? undefined,
     expiryDate: parsedBody.expiryDate || undefined,
+    cookedDate: parsedBody.cookedDate || undefined,
     location: parsedBody.location || undefined,
     notes: parsedBody.notes || undefined,
     createdAt: now,
