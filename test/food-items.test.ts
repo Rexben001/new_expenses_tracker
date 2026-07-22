@@ -108,6 +108,27 @@ describe("food item service", () => {
     );
   });
 
+  test("accepts custom food categories and locations", async () => {
+    const dbService = makeDbService();
+    const response = await createFoodItem({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        ...JSON.parse(validBody),
+        category: "Bakery",
+        location: "Garage pantry",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "Bakery",
+        location: "Garage pantry",
+      })
+    );
+  });
+
   test("stores fruit purchase dates", async () => {
     const dbService = makeDbService();
     await createFoodItem({
@@ -172,22 +193,39 @@ describe("food item service", () => {
   test("calculates current-month savings and waste stats", async () => {
     const dbService = makeDbService([
       {
+        category: "cooked",
         completedAt: "2026-07-10T10:00:00.000Z",
         lifecycleStatus: "finished",
         estimatedValue: 8.25,
         estimatedWeightKg: 1.2,
+        quantity: 2,
+        unit: "servings",
       },
       {
+        category: "fruit",
         completedAt: "2026-07-11T10:00:00.000Z",
         lifecycleStatus: "wasted",
         estimatedValue: 3,
         estimatedWeightKg: 0.4,
+        quantity: 1,
+        unit: "packs",
       },
       {
+        category: "soup",
         completedAt: "2026-06-30T10:00:00.000Z",
         lifecycleStatus: "finished",
         estimatedValue: 20,
         estimatedWeightKg: 2,
+        quantity: 3,
+        unit: "servings",
+      },
+      {
+        category: "fruit",
+        completedAt: "2026-07-19T09:00:00.000Z",
+        lifecycleStatus: "finished",
+        estimatedValue: 2,
+        quantity: 1,
+        unit: "packs",
       },
     ]);
 
@@ -199,11 +237,32 @@ describe("food item service", () => {
 
     expect(parseBody(response)).toEqual({
       period: "2026-07",
-      finishedCount: 1,
+      finishedCount: 2,
       wastedCount: 1,
       savedWeightKg: 1.2,
       wastedWeightKg: 0.4,
-      estimatedSavings: 8.25,
+      estimatedSavings: 10.25,
+      consumption: {
+        day: {
+          records: 1,
+          totalQuantity: 1,
+          quantitiesByUnit: { packs: 1 },
+        },
+        week: {
+          records: 1,
+          totalQuantity: 1,
+          quantitiesByUnit: { packs: 1 },
+        },
+        month: {
+          records: 2,
+          totalQuantity: 3,
+          quantitiesByUnit: { servings: 2, packs: 1 },
+        },
+        byCategory: [
+          { category: "cooked", count: 1 },
+          { category: "fruit", count: 1 },
+        ],
+      },
     });
   });
 

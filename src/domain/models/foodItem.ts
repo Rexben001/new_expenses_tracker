@@ -1,16 +1,10 @@
 import { z } from "zod";
 
-export const FoodCategorySchema = z.enum([
-  "food",
-  "fruit",
-  "vegetable",
-  "drink",
-  "spice",
-  "ingredient",
-  "soup",
-  "cooked",
-  "other",
-]);
+export const FoodCategorySchema = z
+  .string()
+  .trim()
+  .min(1, "Category is required")
+  .max(60);
 
 export const FoodLifecycleStatusSchema = z.enum([
   "active",
