@@ -6,16 +6,11 @@ export const CalendarStatusSchema = z.enum([
   "unavailable",
 ]);
 
-export const HairStyleOptionSchema = z.enum([
-  "kinky",
-  "boho",
-  "knotless",
-  "cornrows",
-  "ghana weaving",
-  "jayda wayda",
-  "fulani braids",
-  "stitch braids",
-]);
+export const HairStyleOptionSchema = z
+  .string()
+  .trim()
+  .min(1, "Hair style is required")
+  .max(80, "Hair style must be 80 characters or fewer");
 
 export const HairSizeOptionSchema = z.enum([
   "small",
@@ -24,7 +19,11 @@ export const HairSizeOptionSchema = z.enum([
   "large",
 ]);
 
-export const HairLengthOptionSchema = z.enum(["shoulder", "bra", "waist"]);
+export const HairLengthOptionSchema = z
+  .string()
+  .trim()
+  .min(1, "Hair length is required")
+  .max(50, "Hair length must be 50 characters or fewer");
 
 export const HairStyleSchema = z.object({
   style: HairStyleOptionSchema.optional().default("knotless"),

@@ -286,6 +286,43 @@ describe("API response behavior", () => {
     );
   });
 
+  test("calendar creation accepts custom hair styles and lengths", async () => {
+    const dbService = makeDbService();
+
+    const response = await createCalendarEntry({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        clients: [
+          {
+            hairStyle: {
+              length: "  hip  ",
+              size: "medium",
+              style: "  goddess locs  ",
+            },
+            name: "Cleo",
+            startTime: "14:00",
+          },
+        ],
+        date: "2026-07-09",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clients: [
+          expect.objectContaining({
+            hairStyle: expect.objectContaining({
+              length: "hip",
+              style: "goddess locs",
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
   test("expense list requests return an empty array when there are no expenses", async () => {
     const dbService = makeDbService();
 
