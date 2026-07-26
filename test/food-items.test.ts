@@ -57,6 +57,7 @@ describe("food item service", () => {
         PK: "USER#user-1#SUB#kitchen-1",
         SK: expect.stringMatching(/^FOOD_ITEM#/),
         name: "Rice",
+        preparationState: "raw",
         quantity: 2,
       })
     );
@@ -81,6 +82,7 @@ describe("food item service", () => {
       expect.objectContaining({
         category: "soup",
         cookedDate: "2026-07-19",
+        preparationState: "cooked",
         unit: "servings",
       })
     );
@@ -126,6 +128,44 @@ describe("food item service", () => {
         category: "Bakery",
         location: "Garage pantry",
       })
+    );
+  });
+
+  test("removes expiry when food is created in a freezer", async () => {
+    const dbService = makeDbService();
+
+    await createFoodItem({
+      dbService,
+      userId: "user-1",
+      body: JSON.stringify({
+        ...JSON.parse(validBody),
+        location: "Garage Freezer",
+      }),
+    });
+
+    expect(dbService.putItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expiryDate: undefined,
+        location: "Garage Freezer",
+      })
+    );
+  });
+
+  test("clears expiry when food moves to a freezer", async () => {
+    const dbService = makeDbService();
+
+    await updateFoodItem({
+      dbService,
+      userId: "user-1",
+      foodItemId: "food-1",
+      body: JSON.stringify({ location: "Freezer" }),
+    });
+
+    expect(dbService.updateItem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("#expiryDate = :expiryDate"),
+      expect.objectContaining({ "#expiryDate": "expiryDate" }),
+      expect.objectContaining({ ":expiryDate": "" })
     );
   });
 
@@ -275,6 +315,7 @@ describe("food item service", () => {
         quantity: 1,
         buy: true,
         opened: true,
+        preparationState: "cooked",
         lifecycleStatus: "finished",
         completedAt: "2026-07-19T10:00:00.000Z",
       }),
@@ -296,6 +337,7 @@ describe("food item service", () => {
         ":buy": true,
         ":quantity": 1,
         ":opened": true,
+        ":preparationState": "cooked",
         ":lifecycleStatus": "finished",
       })
     );

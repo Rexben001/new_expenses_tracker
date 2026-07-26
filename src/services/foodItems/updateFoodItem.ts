@@ -31,6 +31,13 @@ export const updateFoodItem = async ({
 
   const updateBody = {
     ...parsedBody,
+    ...(typeof parsedBody.preparationState !== "string" &&
+    typeof parsedBody.category === "string"
+      ? {
+          preparationState: defaultPreparationState(parsedBody.category),
+        }
+      : {}),
+    ...(isFreezerLocation(parsedBody.location) ? { expiryDate: "" } : {}),
     updatedAt: new Date().toISOString(),
   };
   const keys = Object.keys(updateBody);
@@ -49,3 +56,14 @@ export const updateFoodItem = async ({
     item: formatDbItem(item),
   });
 };
+
+function isFreezerLocation(location: unknown) {
+  return (
+    typeof location === "string" &&
+    location.trim().toLowerCase().includes("freezer")
+  );
+}
+
+function defaultPreparationState(category: string) {
+  return category === "soup" || category === "cooked" ? "cooked" : "raw";
+}

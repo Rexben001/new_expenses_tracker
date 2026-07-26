@@ -30,11 +30,16 @@ export const createFoodItem = async ({
     id,
     userId,
     subAccountId: subAccountId ?? undefined,
-    expiryDate: parsedBody.expiryDate || undefined,
+    expiryDate: isFreezerLocation(parsedBody.location)
+      ? undefined
+      : parsedBody.expiryDate || undefined,
     boughtDate: parsedBody.boughtDate || undefined,
     cookedDate: parsedBody.cookedDate || undefined,
     location: parsedBody.location || undefined,
     notes: parsedBody.notes || undefined,
+    preparationState:
+      parsedBody.preparationState ??
+      defaultPreparationState(parsedBody.category),
     createdAt: now,
     updatedAt: now,
   };
@@ -49,6 +54,14 @@ export const createFoodItem = async ({
     201
   );
 };
+
+function isFreezerLocation(location?: string) {
+  return location?.trim().toLowerCase().includes("freezer") ?? false;
+}
+
+function defaultPreparationState(category: string) {
+  return category === "soup" || category === "cooked" ? "cooked" : "raw";
+}
 
 const parseEventBody = (body: string): FoodItemRequest => {
   try {

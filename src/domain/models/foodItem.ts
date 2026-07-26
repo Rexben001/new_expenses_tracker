@@ -12,6 +12,8 @@ export const FoodLifecycleStatusSchema = z.enum([
   "wasted",
 ]);
 
+export const FoodPreparationStateSchema = z.enum(["raw", "cooked"]);
+
 const OptionalDateSchema = z
   .string()
   .refine((value) => value === "" || /^\d{4}-\d{2}-\d{2}$/.test(value), {
@@ -32,6 +34,7 @@ const FoodItemFields = {
   notes: z.string().trim().max(500).optional(),
   buy: z.boolean(),
   opened: z.boolean().optional().default(false),
+  preparationState: FoodPreparationStateSchema.optional(),
   lifecycleStatus: FoodLifecycleStatusSchema.optional().default("active"),
   completedAt: z.string().optional(),
   freezable: z.boolean().optional().default(false),
@@ -56,6 +59,7 @@ export const FoodItemUpdateRequestSchema = z
     notes: FoodItemFields.notes,
     buy: FoodItemFields.buy,
     opened: z.boolean(),
+    preparationState: FoodPreparationStateSchema,
     lifecycleStatus: FoodLifecycleStatusSchema,
     completedAt: z.string(),
     freezable: z.boolean(),
