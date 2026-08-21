@@ -18,6 +18,7 @@ export const handleRoutes = (
     usersIntegration,
     tasksIntegration,
     foodItemsIntegration,
+    mealPlansIntegration,
     calendarIntegration,
     howToIntegration,
     receiptsIntegration,
@@ -28,6 +29,7 @@ export const handleRoutes = (
     usersIntegration: aws_apigateway.LambdaIntegration;
     tasksIntegration: aws_apigateway.LambdaIntegration;
     foodItemsIntegration: aws_apigateway.LambdaIntegration;
+    mealPlansIntegration: aws_apigateway.LambdaIntegration;
     calendarIntegration: aws_apigateway.LambdaIntegration;
     howToIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
@@ -55,6 +57,7 @@ export const handleRoutes = (
     authorizerParams,
     integration: foodItemsIntegration,
   });
+  handleMealPlanRoutes({ api, authorizerParams, integration: mealPlansIntegration });
   handleCalendarRoutes({
     api,
     authorizerParams,
@@ -76,6 +79,28 @@ export const handleRoutes = (
     authorizerParams,
     integration: videosIntegration,
   });
+};
+
+const handleMealPlanRoutes = ({ api, authorizerParams, integration }: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const plans = api.root.addResource("meal-plans");
+  addCorsPreflight(plans);
+  plans.addMethod("GET", integration, authorizerParams);
+  const meals = plans.addResource("meals");
+  addCorsPreflight(meals);
+  meals.addMethod("POST", integration, authorizerParams);
+  const meal = meals.addResource("{mealId}");
+  addCorsPreflight(meal);
+  meal.addMethod("DELETE", integration, authorizerParams);
+  const schedule = plans.addResource("schedule");
+  const day = schedule.addResource("{day}");
+  const slot = day.addResource("{mealType}");
+  addCorsPreflight(slot);
+  slot.addMethod("PUT", integration, authorizerParams);
+  slot.addMethod("DELETE", integration, authorizerParams);
 };
 
 const handleFoodItemsRoutes = ({

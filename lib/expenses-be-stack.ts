@@ -59,6 +59,12 @@ export class ExpensesBeStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
+    const mealPlansTable = new Table(this, "MealPlansTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
     const calendarTable = new Table(this, "CalendarTable", {
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
@@ -136,6 +142,17 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: {
         ...lambdaEnvironment,
         TABLE_NAME: foodItemsTable.tableName,
+      },
+    });
+
+    const handleMealPlansLambda = new NodejsFunction(this, "HandleMealPlansFn", {
+      runtime: lambdaRuntime,
+      entry: path.join(__dirname, "../src/handlers/handleMealPlans/index.ts"),
+      handler: "handler",
+      environment: {
+        ...lambdaEnvironment,
+        TABLE_NAME: mealPlansTable.tableName,
+        FOOD_ITEMS_TABLE_NAME: foodItemsTable.tableName,
       },
     });
 
@@ -249,6 +266,8 @@ export class ExpensesBeStack extends cdk.Stack {
     table.grantReadWriteData(handleRecurringBudgetsLambda);
     tasksTable.grantReadWriteData(handleTasksLambda);
     foodItemsTable.grantReadWriteData(handleFoodItemsLambda);
+    mealPlansTable.grantReadWriteData(handleMealPlansLambda);
+    foodItemsTable.grantReadData(handleMealPlansLambda);
     calendarTable.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);
     howToSecretsKey.grantEncryptDecrypt(handleHowToLambda);
@@ -341,6 +360,8 @@ export class ExpensesBeStack extends cdk.Stack {
       handleFoodItemsLambda
     );
 
+    const mealPlansIntegration = new apigateway.LambdaIntegration(handleMealPlansLambda);
+
     const calendarIntegration = new apigateway.LambdaIntegration(
       handleCalendarLambda
     );
@@ -391,6 +412,7 @@ export class ExpensesBeStack extends cdk.Stack {
       usersIntegration,
       tasksIntegration,
       foodItemsIntegration,
+      mealPlansIntegration,
       calendarIntegration,
       howToIntegration,
       receiptsIntegration,
@@ -415,6 +437,7 @@ export class ExpensesBeStack extends cdk.Stack {
     new cdk.CfnOutput(this, "FoodItemsTableName", {
       value: foodItemsTable.tableName,
     });
+    new cdk.CfnOutput(this, "MealPlansTableName", { value: mealPlansTable.tableName });
     new cdk.CfnOutput(this, "CalendarTableName", {
       value: calendarTable.tableName,
     });
