@@ -10,7 +10,7 @@ const db = (values: Partial<DbService> = {}) => ({
 const body = (response: { body: string }) => JSON.parse(response.body);
 
 describe("meal plan service", () => {
-  test("returns Nigerian default meals and Sunday-to-Saturday schedule data", async () => {
+  test("returns Nigerian default meals and dated schedule data", async () => {
     const response = await getMealPlan({ planDb: db(), inventoryDb: db(), userId: "user-1" });
     const result = body(response);
     expect(result.meals.map((meal: { name: string }) => meal.name)).toEqual(expect.arrayContaining(["Jollof rice", "Egusi soup", "Moi moi"]));
@@ -20,16 +20,16 @@ describe("meal plan service", () => {
   test("warns when scheduling would leave linked ingredient at minimum stock", async () => {
     const planDb = db({ putItem: jest.fn().mockResolvedValue(undefined) });
     const inventoryDb = db({ queryItems: jest.fn().mockResolvedValue([{ id: "rice-id", name: "Rice", quantity: 3, minimumQuantity: 1, unit: "cups" }]) });
-    const response = await setSchedule({ planDb, inventoryDb, userId: "user-1", day: "sunday", mealType: "lunch", body: JSON.stringify({ mealId: "default-jollof-rice" }) });
+    const response = await setSchedule({ planDb, inventoryDb, userId: "user-1", date: "2026-08-24", mealType: "lunch", body: JSON.stringify({ mealId: "default-jollof-rice" }) });
     const result = body(response);
     expect(result.warnings).toEqual(expect.arrayContaining([expect.objectContaining({ ingredient: "Rice", severity: "low" })]));
-    expect(planDb.putItem).toHaveBeenCalledWith(expect.objectContaining({ day: "sunday", mealType: "lunch" }));
+    expect(planDb.putItem).toHaveBeenCalledWith(expect.objectContaining({ date: "2026-08-24", day: "monday", mealType: "lunch" }));
   });
 
   test("warns for missing and insufficient ingredients", async () => {
     const planDb = db({ putItem: jest.fn().mockResolvedValue(undefined) });
     const inventoryDb = db({ queryItems: jest.fn().mockResolvedValue([{ id: "rice-id", name: "Rice", quantity: 1, minimumQuantity: 0, unit: "cups" }]) });
-    const result = body(await setSchedule({ planDb, inventoryDb, userId: "user-1", day: "saturday", mealType: "dinner", body: JSON.stringify({ mealId: "default-jollof-rice" }) }));
+    const result = body(await setSchedule({ planDb, inventoryDb, userId: "user-1", date: "2026-08-30", mealType: "dinner", body: JSON.stringify({ mealId: "default-jollof-rice" }) }));
     expect(result.warnings.some((warning: { severity: string }) => warning.severity === "insufficient")).toBe(true);
     expect(result.warnings.some((warning: { severity: string }) => warning.severity === "missing")).toBe(true);
   });

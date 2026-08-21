@@ -96,8 +96,8 @@ const handleMealPlanRoutes = ({ api, authorizerParams, integration }: {
   addCorsPreflight(meal);
   meal.addMethod("DELETE", integration, authorizerParams);
   const schedule = plans.addResource("schedule");
-  const day = schedule.addResource("{day}");
-  const slot = day.addResource("{mealType}");
+  const date = schedule.addResource("{date}");
+  const slot = date.addResource("{mealType}");
   addCorsPreflight(slot);
   slot.addMethod("PUT", integration, authorizerParams);
   slot.addMethod("DELETE", integration, authorizerParams);

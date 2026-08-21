@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { DEFAULT_MEALS, MealRequestSchema, MealTypeSchema, ScheduleRequestSchema, WeekdaySchema, type MealIngredient } from "../../domain/models/mealPlan";
+import { DEFAULT_MEALS, MealRequestSchema, MealTypeSchema, ScheduleRequestSchema, type MealIngredient } from "../../domain/models/mealPlan";
 import { createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { HttpError } from "../../utils/http-error";
@@ -42,10 +42,16 @@ export async function deleteMeal(params: Params & { mealId?: string }) {
   return successResponse({ deleted: true, id: params.mealId });
 }
 
-export async function setSchedule(params: Params & { body: string; day?: string; mealType?: string }) {
-  const day = WeekdaySchema.parse(params.day);
+export async function setSchedule(params: Params & { body: string; date?: string; mealType?: string }) {
+  if (!params.date || !/^\d{4}-\d{2}-\d{2}$/.test(params.date) || Number.isNaN(new Date(`${params.date}T00:00:00Z`).getTime())) {
+    throw new HttpError("Valid schedule date is required", 400);
+  }
   const mealType = MealTypeSchema.parse(params.mealType);
-  const { mealId } = parse(ScheduleRequestSchema, params.body);
+  const input = parse(ScheduleRequestSchema, params.body);
+  const scheduleKey = { PK: pk(params), SK: `MEAL_SCHEDULE#${params.date}#${mealType}` };
+  const existing = await params.planDb.getItem(scheduleKey).catch(() => undefined);
+  const mealId = input.mealId ?? existing?.mealId;
+  if (!mealId) throw new HttpError("Meal is required before marking slot cooked", 400);
   const custom = mealId.startsWith("default-") ? undefined : await params.planDb.getItem({ PK: pk(params), SK: `MEAL#${mealId}` }).catch(() => undefined);
   const meal = DEFAULT_MEALS.find((value) => value.id === mealId) ?? (custom ? formatDbItem(custom) : undefined);
   if (!meal) throw new HttpError("Meal not found", 404);
@@ -53,7 +59,7 @@ export async function setSchedule(params: Params & { body: string; day?: string;
   const inventory = (await params.inventoryDb.queryItems("PK = :pk AND begins_with(SK, :prefix)", {
     ":pk": { S: pk(params) }, ":prefix": { S: "FOOD_ITEM#" },
   })).map(formatDbItem).filter((item) => !item.lifecycleStatus || item.lifecycleStatus === "active");
-  const warnings = meal.ingredients.map((ingredient: MealIngredient) => {
+  const warnings = (input.mealId ? meal.ingredients : []).map((ingredient: MealIngredient) => {
     const food = inventory.find((item) => ingredient.foodItemId ? item.id === ingredient.foodItemId :
       String(item.name).trim().toLowerCase() === ingredient.name.trim().toLowerCase() && String(item.unit).trim().toLowerCase() === ingredient.unit.trim().toLowerCase());
     if (!food) return { ingredient: ingredient.name, severity: "missing", message: `${ingredient.name} is missing from food tracker` };
@@ -64,17 +70,18 @@ export async function setSchedule(params: Params & { body: string; day?: string;
   }).filter(Boolean);
 
   const now = new Date().toISOString();
-  const item = { PK: pk(params), SK: `MEAL_SCHEDULE#${day}#${mealType}`, id: `${day}-${mealType}`, recordType: "schedule", day, mealType, mealId, mealName: meal.name, warnings, updatedAt: now };
-  const existing = await params.planDb.getItem({ PK: item.PK, SK: item.SK }).catch(() => undefined);
+  const day = new Date(`${params.date}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }).toLowerCase();
+  const item = { ...scheduleKey, id: `${params.date}-${mealType}`, recordType: "schedule", date: params.date, day, mealType, mealId, mealName: meal.name, warnings: input.mealId ? warnings : (existing?.warnings ?? []), cooked: input.cooked ?? (input.mealId ? false : Boolean(existing?.cooked)), cookedAt: input.cooked ? now : (input.cooked === false ? "" : existing?.cookedAt ?? ""), updatedAt: now };
   if (existing) {
-    const fields = ["mealId", "mealName", "warnings", "updatedAt"];
+    const fields = ["date", "day", "mealId", "mealName", "warnings", "cooked", "cookedAt", "updatedAt"];
     await params.planDb.updateItem({ PK: item.PK, SK: item.SK }, `SET ${fields.map((x) => `#${x} = :${x}`).join(", ")}`, Object.fromEntries(fields.map((x) => [`#${x}`, x])), Object.fromEntries(fields.map((x) => [`:${x}`, item[x as keyof typeof item]])));
   } else await params.planDb.putItem(item);
   return successResponse({ message: warnings.length ? "Meal scheduled with ingredient warnings" : "Meal scheduled", item: formatDbItem(item), warnings });
 }
 
-export async function clearSchedule(params: Params & { day?: string; mealType?: string }) {
-  const day = WeekdaySchema.parse(params.day); const mealType = MealTypeSchema.parse(params.mealType);
-  await params.planDb.deleteItem({ PK: pk(params), SK: `MEAL_SCHEDULE#${day}#${mealType}` });
+export async function clearSchedule(params: Params & { date?: string; mealType?: string }) {
+  if (!params.date || !/^\d{4}-\d{2}-\d{2}$/.test(params.date)) throw new HttpError("Valid schedule date is required", 400);
+  const mealType = MealTypeSchema.parse(params.mealType);
+  await params.planDb.deleteItem({ PK: pk(params), SK: `MEAL_SCHEDULE#${params.date}#${mealType}` });
   return successResponse({ deleted: true });
 }

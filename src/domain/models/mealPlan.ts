@@ -18,7 +18,12 @@ export const MealRequestSchema = z.object({
   ingredients: z.array(MealIngredientSchema).min(1).max(40),
 });
 
-export const ScheduleRequestSchema = z.object({ mealId: z.string().min(1).max(120) });
+export const ScheduleRequestSchema = z.object({
+  mealId: z.string().min(1).max(120).optional(),
+  cooked: z.boolean().optional(),
+}).refine((value) => value.mealId !== undefined || value.cooked !== undefined, {
+  message: "Meal or cooked status is required",
+});
 
 export type MealRequest = z.infer<typeof MealRequestSchema>;
 export type MealIngredient = z.infer<typeof MealIngredientSchema>;

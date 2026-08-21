@@ -11,7 +11,7 @@ export const makeHandler = ({ planDb, inventoryDb }: { planDb: DbService; invent
   try {
     const params = { planDb, inventoryDb, userId: getUserId(event), subAccountId: event.queryStringParameters?.subId };
     if (event.path.includes("/schedule/")) {
-      const slot = { ...params, day: event.pathParameters?.day, mealType: event.pathParameters?.mealType };
+      const slot = { ...params, date: event.pathParameters?.date, mealType: event.pathParameters?.mealType };
       if (event.httpMethod === "PUT") return await setSchedule({ ...slot, body: event.body ?? "" });
       if (event.httpMethod === "DELETE") return await clearSchedule(slot);
     }
