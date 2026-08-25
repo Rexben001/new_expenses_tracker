@@ -93,10 +93,16 @@ const handleShoppingRoutes = ({ api, authorizerParams, integration }: {
   addCorsPreflight(shopping);
   shopping.addMethod("GET", integration, authorizerParams);
   shopping.addMethod("POST", integration, authorizerParams);
+  const history = shopping.addResource("history");
+  addCorsPreflight(history);
+  history.addMethod("GET", integration, authorizerParams);
   const item = shopping.addResource("{shoppingItemId}");
   addCorsPreflight(item);
   item.addMethod("PUT", integration, authorizerParams);
   item.addMethod("DELETE", integration, authorizerParams);
+  const purchase = item.addResource("purchase");
+  addCorsPreflight(purchase);
+  purchase.addMethod("POST", integration, authorizerParams);
 };
 
 const handleMealPlanRoutes = ({ api, authorizerParams, integration }: {

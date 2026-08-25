@@ -8,4 +8,8 @@ export const ShoppingItemRequestSchema = z.object({
   notes: z.string().trim().max(500).optional(),
 });
 
+export const ShoppingPurchaseSchema = z.object({
+  quantity: z.number().finite().positive("Purchased quantity must be greater than zero"),
+});
+
 export type ShoppingItemRequest = z.infer<typeof ShoppingItemRequestSchema>;
