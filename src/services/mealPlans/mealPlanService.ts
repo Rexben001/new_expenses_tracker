@@ -25,8 +25,14 @@ export async function getMealPlan(params: Params) {
     ":pk": { S: pk(params) }, ":prefix": { S: "MEAL" },
   })).map(formatDbItem);
   const customMeals = items.filter((item) => item.recordType === "meal");
+  const overrides = new Map(
+    items
+      .filter((item) => item.recordType === "mealOverride")
+      .map((item) => [item.id, item])
+  );
   const schedule = items.filter((item) => item.recordType === "schedule");
-  return successResponse({ meals: [...DEFAULT_MEALS, ...customMeals], schedule });
+  const defaultMeals = DEFAULT_MEALS.map((meal) => overrides.get(meal.id) ?? meal);
+  return successResponse({ meals: [...defaultMeals, ...customMeals], schedule });
 }
 
 export async function createMeal(params: Params & { body: string }) {
@@ -39,13 +45,17 @@ export async function createMeal(params: Params & { body: string }) {
 }
 
 export async function updateMeal(params: Params & { body: string; mealId?: string }) {
-  if (!params.mealId || params.mealId.startsWith("default-")) {
-    throw new HttpError("Only custom meals can be edited", 400);
-  }
+  if (!params.mealId) throw new HttpError("Meal ID is required", 400);
   const input = parse(MealRequestSchema, params.body);
-  const key = { PK: pk(params), SK: `MEAL#${params.mealId}` };
+  const isDefault = params.mealId.startsWith("default-");
+  const defaultMeal = DEFAULT_MEALS.find((meal) => meal.id === params.mealId);
+  if (isDefault && !defaultMeal) throw new HttpError("Default meal not found", 404);
+  const key = {
+    PK: pk(params),
+    SK: isDefault ? `MEAL_OVERRIDE#${params.mealId}` : `MEAL#${params.mealId}`,
+  };
   const existing = await params.planDb.getItem(key).catch(() => undefined);
-  if (!existing || existing.recordType !== "meal") {
+  if (!isDefault && (!existing || existing.recordType !== "meal")) {
     throw new HttpError("Meal not found", 404);
   }
   const values = {
@@ -54,6 +64,18 @@ export async function updateMeal(params: Params & { body: string; mealId?: strin
     ingredients: input.ingredients,
     updatedAt: new Date().toISOString(),
   };
+  if (isDefault && !existing) {
+    const now = new Date().toISOString();
+    const item = {
+      ...key,
+      id: params.mealId,
+      recordType: "mealOverride",
+      ...values,
+      createdAt: now,
+    };
+    await params.planDb.putItem(item);
+    return successResponse({ message: "Default meal updated successfully", item: formatDbItem(item) });
+  }
   const fields = Object.keys(values);
   const item = await params.planDb.updateItem(
     key,
@@ -86,8 +108,14 @@ export async function setSchedule(params: Params & { body: string; date?: string
   const existing = await params.planDb.getItem(scheduleKey).catch(() => undefined);
   const mealId = input.mealId ?? existing?.mealId;
   if (!mealId) throw new HttpError("Meal is required before marking slot cooked", 400);
-  const custom = mealId.startsWith("default-") ? undefined : await params.planDb.getItem({ PK: pk(params), SK: `MEAL#${mealId}` }).catch(() => undefined);
-  const meal = DEFAULT_MEALS.find((value) => value.id === mealId) ?? (custom ? formatDbItem(custom) : undefined);
+  const isDefault = mealId.startsWith("default-");
+  const savedMeal = await params.planDb.getItem({
+    PK: pk(params),
+    SK: isDefault ? `MEAL_OVERRIDE#${mealId}` : `MEAL#${mealId}`,
+  }).catch(() => undefined);
+  const meal = savedMeal
+    ? formatDbItem(savedMeal)
+    : DEFAULT_MEALS.find((value) => value.id === mealId);
   if (!meal) throw new HttpError("Meal not found", 404);
 
   const inventory = (await params.inventoryDb.queryItems("PK = :pk AND begins_with(SK, :prefix)", {

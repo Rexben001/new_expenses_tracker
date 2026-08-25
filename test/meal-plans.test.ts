@@ -72,4 +72,52 @@ describe("meal plan service", () => {
       details: expect.arrayContaining([expect.objectContaining({ path: "name" })]),
     });
   });
+
+  test("creates an account-specific override when editing a default meal", async () => {
+    const planDb = db({
+      getItem: jest.fn().mockRejectedValue(new Error("not found")),
+      putItem: jest.fn().mockResolvedValue(undefined),
+    });
+    const response = await updateMeal({
+      planDb,
+      inventoryDb: db(),
+      userId: "user-1",
+      mealId: "default-jollof-rice",
+      body: JSON.stringify({
+        name: "Jollof rice",
+        ingredients: [
+          { name: "Rice", quantity: 2, unit: "cups" },
+          { name: "Thyme", quantity: 1, unit: "teaspoons" },
+        ],
+      }),
+    });
+
+    expect(body(response).item).toMatchObject({
+      id: "default-jollof-rice",
+      recordType: "mealOverride",
+    });
+    expect(planDb.putItem).toHaveBeenCalledWith(expect.objectContaining({
+      SK: "MEAL_OVERRIDE#default-jollof-rice",
+    }));
+  });
+
+  test("merges saved default overrides into the returned meal catalog", async () => {
+    const planDb = db({
+      queryItems: jest.fn().mockResolvedValue([{
+        PK: "USER#user-1",
+        SK: "MEAL_OVERRIDE#default-jollof-rice",
+        id: "default-jollof-rice",
+        recordType: "mealOverride",
+        name: "My jollof",
+        ingredients: [{ name: "Rice", quantity: 3, unit: "cups" }],
+      }]),
+    });
+    const result = body(await getMealPlan({ planDb, inventoryDb: db(), userId: "user-1" }));
+
+    expect(result.meals.find((meal: { id: string }) => meal.id === "default-jollof-rice")).toMatchObject({
+      name: "My jollof",
+      ingredients: [{ name: "Rice", quantity: 3, unit: "cups" }],
+    });
+    expect(result.meals.filter((meal: { id: string }) => meal.id === "default-jollof-rice")).toHaveLength(1);
+  });
 });
