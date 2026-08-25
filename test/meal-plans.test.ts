@@ -1,4 +1,4 @@
-import { getMealPlan, setSchedule } from "../src/services/mealPlans/mealPlanService";
+import { getMealPlan, setSchedule, updateMeal } from "../src/services/mealPlans/mealPlanService";
 import type { DbService } from "../src/services/shared/dbService";
 
 const db = (values: Partial<DbService> = {}) => ({
@@ -32,5 +32,44 @@ describe("meal plan service", () => {
     const result = body(await setSchedule({ planDb, inventoryDb, userId: "user-1", date: "2026-08-30", mealType: "dinner", body: JSON.stringify({ mealId: "default-jollof-rice" }) }));
     expect(result.warnings.some((warning: { severity: string }) => warning.severity === "insufficient")).toBe(true);
     expect(result.warnings.some((warning: { severity: string }) => warning.severity === "missing")).toBe(true);
+  });
+
+  test("updates a custom meal", async () => {
+    const planDb = db({
+      getItem: jest.fn().mockResolvedValue({ id: "meal-1", recordType: "meal" }),
+      updateItem: jest.fn().mockResolvedValue({
+        id: "meal-1",
+        recordType: "meal",
+        name: "Updated stew",
+        ingredients: [{ name: "Tomato", quantity: 4, unit: "pieces" }],
+      }),
+    });
+    const response = await updateMeal({
+      planDb,
+      inventoryDb: db(),
+      userId: "user-1",
+      mealId: "meal-1",
+      body: JSON.stringify({
+        name: "Updated stew",
+        ingredients: [{ name: "Tomato", quantity: 4, unit: "pieces" }],
+      }),
+    });
+
+    expect(body(response).item.name).toBe("Updated stew");
+    expect(planDb.updateItem).toHaveBeenCalled();
+  });
+
+  test("returns validation details for invalid meal updates", async () => {
+    await expect(updateMeal({
+      planDb: db(),
+      inventoryDb: db(),
+      userId: "user-1",
+      mealId: "meal-1",
+      body: JSON.stringify({ name: "", ingredients: [] }),
+    })).rejects.toMatchObject({
+      message: "Invalid request body",
+      status: 400,
+      details: expect.arrayContaining([expect.objectContaining({ path: "name" })]),
+    });
   });
 });

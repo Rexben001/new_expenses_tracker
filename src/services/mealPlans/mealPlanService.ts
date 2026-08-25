@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { DEFAULT_MEALS, MealRequestSchema, MealTypeSchema, ScheduleRequestSchema, type MealIngredient } from "../../domain/models/mealPlan";
+import { ZodError } from "zod";
 import { createPk } from "../../utils/createPk";
 import { formatDbItem } from "../../utils/format-item";
 import { HttpError } from "../../utils/http-error";
@@ -8,7 +9,14 @@ import { DbService } from "../shared/dbService";
 
 type Params = { planDb: DbService; inventoryDb: DbService; userId: string; subAccountId?: string };
 const parse = <T>(schema: { parse(value: unknown): T }, body: string): T => {
-  try { return schema.parse(JSON.parse(body)); } catch (error) { throw new HttpError("Invalid request body", 400, { cause: error as Error }); }
+  try { return schema.parse(JSON.parse(body)); } catch (error) {
+    throw new HttpError("Invalid request body", 400, {
+      cause: error as Error,
+      details: error instanceof ZodError
+        ? error.issues.map((issue) => ({ path: issue.path.join("."), code: issue.code, message: issue.message }))
+        : undefined,
+    });
+  }
 };
 const pk = (p: Pick<Params, "userId" | "subAccountId">) => createPk(p.userId, p.subAccountId);
 
@@ -28,6 +36,32 @@ export async function createMeal(params: Params & { body: string }) {
   item.SK = `MEAL#${item.id}`;
   await params.planDb.putItem(item);
   return successResponse({ message: "Meal created successfully", item: formatDbItem(item) }, 201);
+}
+
+export async function updateMeal(params: Params & { body: string; mealId?: string }) {
+  if (!params.mealId || params.mealId.startsWith("default-")) {
+    throw new HttpError("Only custom meals can be edited", 400);
+  }
+  const input = parse(MealRequestSchema, params.body);
+  const key = { PK: pk(params), SK: `MEAL#${params.mealId}` };
+  const existing = await params.planDb.getItem(key).catch(() => undefined);
+  if (!existing || existing.recordType !== "meal") {
+    throw new HttpError("Meal not found", 404);
+  }
+  const values = {
+    name: input.name,
+    description: input.description ?? "",
+    ingredients: input.ingredients,
+    updatedAt: new Date().toISOString(),
+  };
+  const fields = Object.keys(values);
+  const item = await params.planDb.updateItem(
+    key,
+    `SET ${fields.map((field) => `#${field} = :${field}`).join(", ")}`,
+    Object.fromEntries(fields.map((field) => [`#${field}`, field])),
+    Object.fromEntries(fields.map((field) => [`:${field}`, values[field as keyof typeof values]]))
+  );
+  return successResponse({ message: "Meal updated successfully", item: formatDbItem(item) });
 }
 
 export async function deleteMeal(params: Params & { mealId?: string }) {

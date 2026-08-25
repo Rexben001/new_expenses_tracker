@@ -94,9 +94,13 @@ const handleMealPlanRoutes = ({ api, authorizerParams, integration }: {
   meals.addMethod("POST", integration, authorizerParams);
   const meal = meals.addResource("{mealId}");
   addCorsPreflight(meal);
+  meal.addMethod("PUT", integration, authorizerParams);
   meal.addMethod("DELETE", integration, authorizerParams);
   const schedule = plans.addResource("schedule");
-  const date = schedule.addResource("{date}");
+  // Keep the original API Gateway path-parameter name. Renaming `{day}` to
+  // `{date}` makes CloudFormation create a sibling wildcard before deleting
+  // the old resource, which API Gateway rejects. The value is an ISO date.
+  const date = schedule.addResource("{day}");
   const slot = date.addResource("{mealType}");
   addCorsPreflight(slot);
   slot.addMethod("PUT", integration, authorizerParams);

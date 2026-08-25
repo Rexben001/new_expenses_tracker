@@ -1,5 +1,5 @@
 import type { APIGatewayEvent, Context } from "aws-lambda";
-import { clearSchedule, createMeal, deleteMeal, getMealPlan, setSchedule } from "../../services/mealPlans/mealPlanService";
+import { clearSchedule, createMeal, deleteMeal, getMealPlan, setSchedule, updateMeal } from "../../services/mealPlans/mealPlanService";
 import { DbService } from "../../services/shared/dbService";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
@@ -22,6 +22,7 @@ export const makeHandler = ({ planDb, inventoryDb }: { planDb: DbService; invent
       if (event.httpMethod === "DELETE") return await clearSchedule(slot);
     }
     if (event.path.endsWith("/meals") && event.httpMethod === "POST") return await createMeal({ ...params, body: event.body ?? "" });
+    if (event.pathParameters?.mealId && event.httpMethod === "PUT") return await updateMeal({ ...params, mealId: event.pathParameters.mealId, body: event.body ?? "" });
     if (event.pathParameters?.mealId && event.httpMethod === "DELETE") return await deleteMeal({ ...params, mealId: event.pathParameters.mealId });
     if (event.httpMethod === "GET") return await getMealPlan(params);
     throw new HttpError("Method not allowed", 405);

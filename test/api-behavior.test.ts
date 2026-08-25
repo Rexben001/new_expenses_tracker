@@ -120,6 +120,20 @@ function makeHowToKmsClient() {
 }
 
 describe("API response behavior", () => {
+  test("includes safe validation details for HTTP errors", () => {
+    const response = errorResponseFromError(
+      new HttpError("Invalid request body", 400, {
+        details: [{ path: "ingredients.0.quantity", message: "Must be positive" }],
+      })
+    );
+
+    expect(parseBody(response)).toEqual({
+      message: "Invalid request body",
+      statusCode: 400,
+      details: [{ path: "ingredients.0.quantity", message: "Must be positive" }],
+    });
+  });
+
   test("task list requests return an empty array when there are no tasks", async () => {
     const dbService = makeDbService();
 
