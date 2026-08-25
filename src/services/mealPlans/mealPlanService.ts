@@ -97,7 +97,9 @@ async function linkOrCreateIngredients(
     { ":pk": { S: pk(params) }, ":prefix": { S: "FOOD_ITEM#" } }
   )).map(formatDbItem);
   const available = inventory.filter(
-    (item) => !item.lifecycleStatus || item.lifecycleStatus === "active"
+    (item) =>
+      (!item.lifecycleStatus || item.lifecycleStatus === "active") &&
+      !item.hidden
   );
 
   const linked: MealIngredient[] = [];
