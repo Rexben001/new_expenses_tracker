@@ -37,8 +37,9 @@ export async function getMealPlan(params: Params) {
 
 export async function createMeal(params: Params & { body: string }) {
   const input = parse(MealRequestSchema, params.body);
+  const ingredients = await linkOrCreateIngredients(params, input.ingredients);
   const now = new Date().toISOString();
-  const item = { PK: pk(params), SK: `MEAL#${randomUUID()}`, id: randomUUID(), recordType: "meal", ...input, createdAt: now, updatedAt: now };
+  const item = { PK: pk(params), SK: `MEAL#${randomUUID()}`, id: randomUUID(), recordType: "meal", ...input, ingredients, createdAt: now, updatedAt: now };
   item.SK = `MEAL#${item.id}`;
   await params.planDb.putItem(item);
   return successResponse({ message: "Meal created successfully", item: formatDbItem(item) }, 201);
@@ -47,6 +48,7 @@ export async function createMeal(params: Params & { body: string }) {
 export async function updateMeal(params: Params & { body: string; mealId?: string }) {
   if (!params.mealId) throw new HttpError("Meal ID is required", 400);
   const input = parse(MealRequestSchema, params.body);
+  const ingredients = await linkOrCreateIngredients(params, input.ingredients);
   const isDefault = params.mealId.startsWith("default-");
   const defaultMeal = DEFAULT_MEALS.find((meal) => meal.id === params.mealId);
   if (isDefault && !defaultMeal) throw new HttpError("Default meal not found", 404);
@@ -61,7 +63,7 @@ export async function updateMeal(params: Params & { body: string; mealId?: strin
   const values = {
     name: input.name,
     description: input.description ?? "",
-    ingredients: input.ingredients,
+    ingredients,
     updatedAt: new Date().toISOString(),
   };
   if (isDefault && !existing) {
@@ -84,6 +86,68 @@ export async function updateMeal(params: Params & { body: string; mealId?: strin
     Object.fromEntries(fields.map((field) => [`:${field}`, values[field as keyof typeof values]]))
   );
   return successResponse({ message: "Meal updated successfully", item: formatDbItem(item) });
+}
+
+async function linkOrCreateIngredients(
+  params: Params,
+  ingredients: MealIngredient[]
+) {
+  const inventory = (await params.inventoryDb.queryItems(
+    "PK = :pk AND begins_with(SK, :prefix)",
+    { ":pk": { S: pk(params) }, ":prefix": { S: "FOOD_ITEM#" } }
+  )).map(formatDbItem);
+  const available = inventory.filter(
+    (item) => !item.lifecycleStatus || item.lifecycleStatus === "active"
+  );
+
+  const linked: MealIngredient[] = [];
+  for (const ingredient of ingredients) {
+    const normalizedName = ingredient.name.trim().toLowerCase();
+    const normalizedUnit = ingredient.unit.trim().toLowerCase();
+    const existingInventory = ingredient.foodItemId
+      ? inventory.find((item) => item.id === ingredient.foodItemId)
+      : available.find(
+          (item) =>
+            String(item.name).trim().toLowerCase() === normalizedName &&
+            String(item.unit).trim().toLowerCase() === normalizedUnit
+        );
+    const existingLinked = linked.find(
+      (item) =>
+        item.name.trim().toLowerCase() === normalizedName &&
+        item.unit.trim().toLowerCase() === normalizedUnit
+    );
+
+    if (existingInventory?.id || existingLinked?.foodItemId) {
+      linked.push({
+        ...ingredient,
+        foodItemId: String(existingInventory?.id ?? existingLinked?.foodItemId),
+      });
+      continue;
+    }
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    await params.inventoryDb.putItem({
+      PK: pk(params),
+      SK: `FOOD_ITEM#${id}`,
+      id,
+      name: ingredient.name,
+      category: "ingredient",
+      quantity: 1,
+      unit: ingredient.unit,
+      minimumQuantity: 1,
+      location: "Pantry",
+      buy: false,
+      opened: false,
+      preparationState: "raw",
+      lifecycleStatus: "active",
+      freezable: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    linked.push({ ...ingredient, foodItemId: id });
+  }
+  return linked;
 }
 
 export async function deleteMeal(params: Params & { mealId?: string }) {

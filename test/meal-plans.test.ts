@@ -1,4 +1,4 @@
-import { getMealPlan, setSchedule, updateMeal } from "../src/services/mealPlans/mealPlanService";
+import { createMeal, getMealPlan, setSchedule, updateMeal } from "../src/services/mealPlans/mealPlanService";
 import type { DbService } from "../src/services/shared/dbService";
 
 const db = (values: Partial<DbService> = {}) => ({
@@ -119,5 +119,34 @@ describe("meal plan service", () => {
       ingredients: [{ name: "Rice", quantity: 3, unit: "cups" }],
     });
     expect(result.meals.filter((meal: { id: string }) => meal.id === "default-jollof-rice")).toHaveLength(1);
+  });
+
+  test("creates and links a quantity-one tracker item for a new ingredient", async () => {
+    const planDb = db({ putItem: jest.fn().mockResolvedValue(undefined) });
+    const inventoryDb = db({
+      queryItems: jest.fn().mockResolvedValue([]),
+      putItem: jest.fn().mockResolvedValue(undefined),
+    });
+    await createMeal({
+      planDb,
+      inventoryDb,
+      userId: "user-1",
+      body: JSON.stringify({
+        name: "Pepper soup",
+        ingredients: [{ name: "Uziza", quantity: 2, unit: "tablespoons" }],
+      }),
+    });
+
+    expect(inventoryDb.putItem).toHaveBeenCalledWith(expect.objectContaining({
+      name: "Uziza",
+      quantity: 1,
+      minimumQuantity: 1,
+      unit: "tablespoons",
+      category: "ingredient",
+    }));
+    const trackerItem = inventoryDb.putItem.mock.calls[0][0];
+    expect(planDb.putItem).toHaveBeenCalledWith(expect.objectContaining({
+      ingredients: [expect.objectContaining({ foodItemId: trackerItem.id })],
+    }));
   });
 });
