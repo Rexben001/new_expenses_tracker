@@ -19,6 +19,7 @@ export const handleRoutes = (
     tasksIntegration,
     foodItemsIntegration,
     mealPlansIntegration,
+    shoppingIntegration,
     calendarIntegration,
     howToIntegration,
     receiptsIntegration,
@@ -30,6 +31,7 @@ export const handleRoutes = (
     tasksIntegration: aws_apigateway.LambdaIntegration;
     foodItemsIntegration: aws_apigateway.LambdaIntegration;
     mealPlansIntegration: aws_apigateway.LambdaIntegration;
+    shoppingIntegration: aws_apigateway.LambdaIntegration;
     calendarIntegration: aws_apigateway.LambdaIntegration;
     howToIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
@@ -58,6 +60,7 @@ export const handleRoutes = (
     integration: foodItemsIntegration,
   });
   handleMealPlanRoutes({ api, authorizerParams, integration: mealPlansIntegration });
+  handleShoppingRoutes({ api, authorizerParams, integration: shoppingIntegration });
   handleCalendarRoutes({
     api,
     authorizerParams,
@@ -79,6 +82,21 @@ export const handleRoutes = (
     authorizerParams,
     integration: videosIntegration,
   });
+};
+
+const handleShoppingRoutes = ({ api, authorizerParams, integration }: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const shopping = api.root.addResource("shopping-items");
+  addCorsPreflight(shopping);
+  shopping.addMethod("GET", integration, authorizerParams);
+  shopping.addMethod("POST", integration, authorizerParams);
+  const item = shopping.addResource("{shoppingItemId}");
+  addCorsPreflight(item);
+  item.addMethod("PUT", integration, authorizerParams);
+  item.addMethod("DELETE", integration, authorizerParams);
 };
 
 const handleMealPlanRoutes = ({ api, authorizerParams, integration }: {

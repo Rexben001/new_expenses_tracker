@@ -65,6 +65,12 @@ export class ExpensesBeStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
+    const shoppingTable = new Table(this, "ShoppingTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
     const calendarTable = new Table(this, "CalendarTable", {
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
@@ -154,6 +160,13 @@ export class ExpensesBeStack extends cdk.Stack {
         TABLE_NAME: mealPlansTable.tableName,
         FOOD_ITEMS_TABLE_NAME: foodItemsTable.tableName,
       },
+    });
+
+    const handleShoppingLambda = new NodejsFunction(this, "HandleShoppingFn", {
+      runtime: lambdaRuntime,
+      entry: path.join(__dirname, "../src/handlers/handleShopping/index.ts"),
+      handler: "handler",
+      environment: { ...lambdaEnvironment, TABLE_NAME: shoppingTable.tableName, FOOD_ITEMS_TABLE_NAME: foodItemsTable.tableName },
     });
 
     const handleCalendarLambda = new NodejsFunction(this, "HandleCalendarFn", {
@@ -268,6 +281,8 @@ export class ExpensesBeStack extends cdk.Stack {
     foodItemsTable.grantReadWriteData(handleFoodItemsLambda);
     mealPlansTable.grantReadWriteData(handleMealPlansLambda);
     foodItemsTable.grantReadData(handleMealPlansLambda);
+    shoppingTable.grantReadWriteData(handleShoppingLambda);
+    foodItemsTable.grantReadWriteData(handleShoppingLambda);
     calendarTable.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);
     howToSecretsKey.grantEncryptDecrypt(handleHowToLambda);
@@ -361,6 +376,7 @@ export class ExpensesBeStack extends cdk.Stack {
     );
 
     const mealPlansIntegration = new apigateway.LambdaIntegration(handleMealPlansLambda);
+    const shoppingIntegration = new apigateway.LambdaIntegration(handleShoppingLambda);
 
     const calendarIntegration = new apigateway.LambdaIntegration(
       handleCalendarLambda
@@ -413,6 +429,7 @@ export class ExpensesBeStack extends cdk.Stack {
       tasksIntegration,
       foodItemsIntegration,
       mealPlansIntegration,
+      shoppingIntegration,
       calendarIntegration,
       howToIntegration,
       receiptsIntegration,
@@ -438,6 +455,7 @@ export class ExpensesBeStack extends cdk.Stack {
       value: foodItemsTable.tableName,
     });
     new cdk.CfnOutput(this, "MealPlansTableName", { value: mealPlansTable.tableName });
+    new cdk.CfnOutput(this, "ShoppingTableName", { value: shoppingTable.tableName });
     new cdk.CfnOutput(this, "CalendarTableName", {
       value: calendarTable.tableName,
     });
