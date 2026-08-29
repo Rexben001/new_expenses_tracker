@@ -280,7 +280,8 @@ export class ExpensesBeStack extends cdk.Stack {
     tasksTable.grantReadWriteData(handleTasksLambda);
     foodItemsTable.grantReadWriteData(handleFoodItemsLambda);
     mealPlansTable.grantReadWriteData(handleMealPlansLambda);
-    foodItemsTable.grantReadData(handleMealPlansLambda);
+    // Meal creation can auto-create and link missing Food Tracker ingredients.
+    foodItemsTable.grantReadWriteData(handleMealPlansLambda);
     shoppingTable.grantReadWriteData(handleShoppingLambda);
     foodItemsTable.grantReadWriteData(handleShoppingLambda);
     calendarTable.grantReadWriteData(handleCalendarLambda);

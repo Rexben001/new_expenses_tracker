@@ -93,6 +93,7 @@ describe("API Gateway routes", () => {
         "POST /meal-plans/meals",
         "POST /shopping-items",
         "POST /shopping-items/{shoppingItemId}/purchase",
+        "POST /shopping-items/{shoppingItemId}/readd",
         "POST /how-to",
         "POST /receipts/scan-v2",
         "POST /tasks",

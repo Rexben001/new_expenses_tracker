@@ -103,6 +103,9 @@ const handleShoppingRoutes = ({ api, authorizerParams, integration }: {
   const purchase = item.addResource("purchase");
   addCorsPreflight(purchase);
   purchase.addMethod("POST", integration, authorizerParams);
+  const readd = item.addResource("readd");
+  addCorsPreflight(readd);
+  readd.addMethod("POST", integration, authorizerParams);
 };
 
 const handleMealPlanRoutes = ({ api, authorizerParams, integration }: {
