@@ -24,6 +24,7 @@ export const handleRoutes = (
     howToIntegration,
     receiptsIntegration,
     videosIntegration,
+    wardrobeIntegration,
   }: {
     expensesIntegration: aws_apigateway.LambdaIntegration;
     budgetsIntegration: aws_apigateway.LambdaIntegration;
@@ -36,6 +37,7 @@ export const handleRoutes = (
     howToIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
     videosIntegration: aws_apigateway.LambdaIntegration;
+    wardrobeIntegration: aws_apigateway.LambdaIntegration;
   }
 ) => {
   const authorizerParams = {
@@ -82,6 +84,45 @@ export const handleRoutes = (
     authorizerParams,
     integration: videosIntegration,
   });
+  handleWardrobeRoutes({
+    api,
+    authorizerParams,
+    integration: wardrobeIntegration,
+  });
+};
+
+const handleWardrobeRoutes = ({
+  api,
+  authorizerParams,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  authorizerParams: MethodOptions;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const wardrobe = api.root.addResource("wardrobe");
+  addCorsPreflight(wardrobe);
+
+  const uploadUrl = wardrobe.addResource("upload-url");
+  addCorsPreflight(uploadUrl);
+  uploadUrl.addMethod("POST", integration, authorizerParams);
+
+  const items = wardrobe.addResource("items");
+  addCorsPreflight(items);
+  items.addMethod("GET", integration, authorizerParams);
+  items.addMethod("POST", integration, authorizerParams);
+
+  const item = items.addResource("{wardrobeItemId}");
+  addCorsPreflight(item);
+  item.addMethod("PUT", integration, authorizerParams);
+  item.addMethod("DELETE", integration, authorizerParams);
+
+  const plans = wardrobe.addResource("plans");
+  addCorsPreflight(plans);
+  const week = plans.addResource("{weekStart}");
+  addCorsPreflight(week);
+  week.addMethod("GET", integration, authorizerParams);
+  week.addMethod("PUT", integration, authorizerParams);
 };
 
 const handleShoppingRoutes = ({ api, authorizerParams, integration }: {

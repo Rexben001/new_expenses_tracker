@@ -5,6 +5,7 @@ import * as path from "path";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as kms from "aws-cdk-lib/aws-kms";
+import * as s3 from "aws-cdk-lib/aws-s3";
 
 import { handleRoutes } from "./apigw";
 import {
@@ -81,6 +82,29 @@ export class ExpensesBeStack extends cdk.Stack {
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
+    const wardrobeTable = new Table(this, "WardrobeTable", {
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const wardrobeBucket = new s3.Bucket(this, "WardrobeImageBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      cors: [
+        {
+          allowedHeaders: ["Content-Type"],
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT],
+          allowedOrigins: ["*"],
+          exposedHeaders: ["ETag"],
+          maxAge: 3600,
+        },
+      ],
     });
 
     const howToSecretsKey = new kms.Key(this, "HowToSecretsKey", {
@@ -214,6 +238,25 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
+    const handleWardrobeLambda = new NodejsFunction(
+      this,
+      "HandleWardrobeFn",
+      {
+        runtime: lambdaRuntime,
+        entry: path.join(
+          __dirname,
+          "../src/handlers/handleWardrobe/index.ts"
+        ),
+        handler: "handler",
+        environment: {
+          ...lambdaEnvironment,
+          TABLE_NAME: wardrobeTable.tableName,
+          WARDROBE_BUCKET_NAME: wardrobeBucket.bucketName,
+          WARDROBE_IMAGE_URL_EXPIRES_SECONDS: "900",
+        },
+      }
+    );
+
     handleReceiptsLambda.addToRolePolicy(
       new PolicyStatement({
         actions: ["textract:AnalyzeExpense"],
@@ -287,6 +330,8 @@ export class ExpensesBeStack extends cdk.Stack {
     calendarTable.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);
     howToSecretsKey.grantEncryptDecrypt(handleHowToLambda);
+    wardrobeTable.grantReadWriteData(handleWardrobeLambda);
+    wardrobeBucket.grantReadWrite(handleWardrobeLambda);
 
     const userPool = new cognito.UserPool(this, "ExpensesUserPool", {
       userPoolName: "expenses-user-pool",
@@ -395,6 +440,10 @@ export class ExpensesBeStack extends cdk.Stack {
       handleVideosLambda
     );
 
+    const wardrobeIntegration = new apigateway.LambdaIntegration(
+      handleWardrobeLambda
+    );
+
     new apigateway.GatewayResponse(this, "UnauthorizedResponse", {
       restApi: api,
       type: apigateway.ResponseType.UNAUTHORIZED, // 401
@@ -435,6 +484,7 @@ export class ExpensesBeStack extends cdk.Stack {
       howToIntegration,
       receiptsIntegration,
       videosIntegration,
+      wardrobeIntegration,
     });
 
     const deploymentStage = api.deploymentStage.node.defaultChild as CfnStage;
@@ -462,6 +512,12 @@ export class ExpensesBeStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, "HowToTableName", {
       value: howToTable.tableName,
+    });
+    new cdk.CfnOutput(this, "WardrobeTableName", {
+      value: wardrobeTable.tableName,
+    });
+    new cdk.CfnOutput(this, "WardrobeBucketName", {
+      value: wardrobeBucket.bucketName,
     });
   }
 }

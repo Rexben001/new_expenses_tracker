@@ -44,6 +44,7 @@ describe("API Gateway routes", () => {
       howToIntegration: {} as any,
       receiptsIntegration: {} as any,
       videosIntegration: {} as any,
+      wardrobeIntegration: {} as any,
     });
 
     expect(
@@ -63,6 +64,7 @@ describe("API Gateway routes", () => {
         "DELETE /tasks/{taskId}",
         "DELETE /users",
         "DELETE /video-library/items",
+        "DELETE /wardrobe/items/{wardrobeItemId}",
         "GET /budgets",
         "GET /budgets/{budgetId}",
         "GET /calendar",
@@ -84,6 +86,8 @@ describe("API Gateway routes", () => {
         "GET /users",
         "GET /video-library/folders",
         "GET /video-library/items",
+        "GET /wardrobe/items",
+        "GET /wardrobe/plans/{weekStart}",
         "POST /budgets",
         "POST /budgets/{budgetId}/duplicates",
         "POST /calendar",
@@ -99,6 +103,8 @@ describe("API Gateway routes", () => {
         "POST /tasks",
         "POST /users",
         "POST /video-upload-url",
+        "POST /wardrobe/items",
+        "POST /wardrobe/upload-url",
         "PUT /budgets/{budgetId}",
         "PUT /calendar/{calendarEntryId}",
         "PUT /expenses/{expenseId}",
@@ -109,6 +115,8 @@ describe("API Gateway routes", () => {
         "PUT /how-to/{howToId}",
         "PUT /tasks/{taskId}",
         "PUT /users",
+        "PUT /wardrobe/items/{wardrobeItemId}",
+        "PUT /wardrobe/plans/{weekStart}",
       ].sort()
     );
   });
