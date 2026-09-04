@@ -346,6 +346,18 @@ const handleCalendarRoutes = ({
   calendar.addMethod("GET", integration, authorizerParams);
   calendar.addMethod("POST", integration, authorizerParams);
 
+  const transfers = calendar.addResource("transfers");
+  addCorsPreflight(transfers);
+  transfers.addMethod("POST", integration, authorizerParams);
+
+  const acceptTransfer = transfers.addResource("accept");
+  addCorsPreflight(acceptTransfer);
+  acceptTransfer.addMethod("POST", integration, authorizerParams);
+
+  const previewTransfer = transfers.addResource("preview");
+  addCorsPreflight(previewTransfer);
+  previewTransfer.addMethod("POST", integration, authorizerParams);
+
   const calendarEntryId = calendar.addResource("{calendarEntryId}");
   addCorsPreflight(calendarEntryId);
 

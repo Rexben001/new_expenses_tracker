@@ -1,4 +1,5 @@
 import { formatDbItem } from "../../utils/format-item";
+import { HttpError } from "../../utils/http-error";
 import { successResponse } from "../../utils/response";
 import { DbService } from "../shared/dbService";
 
@@ -17,7 +18,7 @@ export const updateUser = async ({
     throw new Error("User ID is required for updating an user");
   }
 
-  const parsedBody = parseEventBody(body ?? "");
+  const parsedBody = parseEventBody(body ?? "", Boolean(subAccountId));
 
   const pk = `USER#${userId}`;
   const sk = subAccountId ? `SUB#${subAccountId}` : `PROFILE#${userId}`;
@@ -49,10 +50,26 @@ export const updateUser = async ({
   });
 };
 
-function parseEventBody(body: string) {
+function parseEventBody(body: string, isSubAccount: boolean) {
   try {
-    return JSON.parse(body);
+    const json = JSON.parse(body) as Record<string, unknown>;
+    const allowedFields = new Set(
+      isSubAccount
+        ? ["name", "currency", "budgetStartDay"]
+        : ["userName", "currency", "budgetStartDay", "colorMode"]
+    );
+    const parsed = Object.fromEntries(
+      Object.entries(json).filter(([key]) => allowedFields.has(key))
+    );
+
+    if (!Object.keys(parsed).length) {
+      throw new HttpError("No editable profile fields were provided", 400);
+    }
+    return parsed;
   } catch (error) {
-    throw new Error("Invalid JSON in request body");
+    if (error instanceof HttpError) throw error;
+    throw new HttpError("Invalid JSON in request body", 400, {
+      cause: error as Error,
+    });
   }
 }

@@ -3,14 +3,25 @@ import { createCalendarEntry } from "../../services/calendar/createCalendarEntry
 import { deleteCalendarEntry } from "../../services/calendar/deleteCalendarEntry";
 import { getCalendarEntries } from "../../services/calendar/getCalendarEntries";
 import { updateCalendarEntry } from "../../services/calendar/updateCalendarEntry";
+import { assertCalendarAccess } from "../../services/calendar/calendarAccess";
+import {
+  acceptCalendarTransfer,
+  createCalendarTransfer,
+  previewCalendarTransfer,
+} from "../../services/calendar/transferCalendar";
 import { DbService } from "../../services/shared/dbService";
-import { assertAdmin } from "../../utils/admin";
 import { getUserId } from "../../utils/getUserId";
 import { HttpError } from "../../utils/http-error";
 import { createInvocationLogger } from "../../utils/logger";
 import { errorResponseFromError } from "../../utils/response";
 
-export const makeHandler = ({ dbService }: { dbService: DbService }) => {
+export const makeHandler = ({
+  dbService,
+  userDbService = dbService,
+}: {
+  dbService: DbService;
+  userDbService?: DbService;
+}) => {
   return async (event: APIGatewayEvent, context: Context) => {
     const logger = createInvocationLogger(context, {
       handler: "handleCalendar",
@@ -20,11 +31,19 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
 
     try {
       const eventMethod = event.httpMethod;
-      assertAdmin(event);
       const userId = getUserId(event);
+      const requesterEmail =
+        event.requestContext?.authorizer?.claims?.email ?? "";
       const calendarEntryId = event.pathParameters?.calendarEntryId;
       const subAccountId = event.queryStringParameters?.subId;
       const body = event.body ?? "";
+      const isTransferRequest = event.path.endsWith("/calendar/transfers");
+      const isTransferAcceptance = event.path.endsWith(
+        "/calendar/transfers/accept"
+      );
+      const isTransferPreview = event.path.endsWith(
+        "/calendar/transfers/preview"
+      );
 
       logger.info("Received calendar request", {
         calendarEntryId,
@@ -35,6 +54,36 @@ export const makeHandler = ({ dbService }: { dbService: DbService }) => {
       if (!userId) {
         throw new HttpError("User ID is required", 400, {
           cause: new Error("User ID is missing from path parameters"),
+        });
+      }
+
+      if (isTransferAcceptance && eventMethod === "POST") {
+        return await acceptCalendarTransfer({
+          dbService,
+          userDbService,
+          body,
+          userId,
+          recipientEmail: requesterEmail,
+        });
+      }
+
+      if (isTransferPreview && eventMethod === "POST") {
+        return await previewCalendarTransfer({
+          dbService,
+          body,
+          recipientEmail: requesterEmail,
+        });
+      }
+
+      await assertCalendarAccess({ event, userDbService, userId });
+
+      if (isTransferRequest && eventMethod === "POST") {
+        return await createCalendarTransfer({
+          dbService,
+          body,
+          userId,
+          sourceEmail: requesterEmail,
+          sourceSubAccountId: subAccountId,
         });
       }
 

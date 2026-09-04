@@ -16,6 +16,11 @@ import { createCalendarEntry } from "../src/services/calendar/createCalendarEntr
 import { deleteCalendarEntry } from "../src/services/calendar/deleteCalendarEntry";
 import { getCalendarEntries } from "../src/services/calendar/getCalendarEntries";
 import { updateCalendarEntry } from "../src/services/calendar/updateCalendarEntry";
+import {
+  acceptCalendarTransfer,
+  createCalendarTransfer,
+  previewCalendarTransfer,
+} from "../src/services/calendar/transferCalendar";
 import { createExpenses } from "../src/services/expenses/createExpenses";
 import { deleteExpenses } from "../src/services/expenses/deleteExpenses";
 import { duplicateExpenses } from "../src/services/expenses/duplicateExpense";
@@ -72,6 +77,11 @@ jest.mock("../src/services/calendar/getCalendarEntries", () => ({
 }));
 jest.mock("../src/services/calendar/updateCalendarEntry", () => ({
   updateCalendarEntry: jest.fn(),
+}));
+jest.mock("../src/services/calendar/transferCalendar", () => ({
+  acceptCalendarTransfer: jest.fn(),
+  createCalendarTransfer: jest.fn(),
+  previewCalendarTransfer: jest.fn(),
 }));
 jest.mock("../src/services/expenses/createExpenses", () => ({
   createExpenses: jest.fn(),
@@ -140,6 +150,9 @@ const mockedServices = [
   deleteCalendarEntry,
   getCalendarEntries,
   updateCalendarEntry,
+  acceptCalendarTransfer,
+  createCalendarTransfer,
+  previewCalendarTransfer,
   createExpenses,
   deleteExpenses,
   duplicateExpenses,
@@ -357,7 +370,13 @@ describe("tasks API handler", () => {
 });
 
 describe("calendar API handler", () => {
-  const handler = makeCalendarHandler({ dbService: mockDbService });
+  const calendarUserDb = {
+    queryItems: jest.fn().mockResolvedValue([]),
+  } as unknown as DbService;
+  const handler = makeCalendarHandler({
+    dbService: mockDbService,
+    userDbService: calendarUserDb,
+  });
 
   test.each([
     ["POST", "/calendar", {}, createCalendarEntry],
@@ -412,6 +431,70 @@ describe("calendar API handler", () => {
     expect(response.statusCode).toBe(405);
   });
 
+  test("creates a transfer for a calendar owner", async () => {
+    const response = await handler(
+      apiEvent({
+        body: JSON.stringify({ recipientEmail: "friend@example.com" }),
+        method: "POST",
+        path: "/calendar/transfers",
+        queryStringParameters: { subId: "sub-1" },
+      }),
+      mockContext
+    );
+
+    expect(response).toBe(okResponse);
+    expect(createCalendarTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dbService: mockDbService,
+        userId: "user-1",
+        sourceEmail: adminEmail,
+        sourceSubAccountId: "sub-1",
+      })
+    );
+  });
+
+  test("lets the addressed signed-in user accept without prior calendar access", async () => {
+    const response = await handler(
+      apiEvent({
+        body: JSON.stringify({ code: "ABCD-2345-EFGH" }),
+        method: "POST",
+        path: "/calendar/transfers/accept",
+        claims: { email: "friend@example.com" },
+      }),
+      mockContext
+    );
+
+    expect(response).toBe(okResponse);
+    expect(acceptCalendarTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dbService: mockDbService,
+        userDbService: calendarUserDb,
+        userId: "user-1",
+        recipientEmail: "friend@example.com",
+      })
+    );
+  });
+
+  test("lets the addressed signed-in user preview before accepting", async () => {
+    const response = await handler(
+      apiEvent({
+        body: JSON.stringify({ code: "ABCD-2345-EFGH" }),
+        method: "POST",
+        path: "/calendar/transfers/preview",
+        claims: { email: "friend@example.com" },
+      }),
+      mockContext
+    );
+
+    expect(response).toBe(okResponse);
+    expect(previewCalendarTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dbService: mockDbService,
+        recipientEmail: "friend@example.com",
+      })
+    );
+  });
+
   test("returns 403 for non-admin users", async () => {
     const response = await handler(
       apiEvent({
@@ -424,7 +507,7 @@ describe("calendar API handler", () => {
 
     expect(response.statusCode).toBe(403);
     expect(parseBody(response)).toEqual({
-      message: "Admin access required",
+      message: "Calendar access required",
       statusCode: 403,
     });
     expect(getCalendarEntries).not.toHaveBeenCalled();

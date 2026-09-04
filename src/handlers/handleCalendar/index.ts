@@ -8,4 +8,8 @@ export const handler = makeHandler({
     makeDocumentClient({ dynamodb: new DynamoDBClient({}) }),
     process.env.TABLE_NAME!
   ),
+  userDbService: makeDbService(
+    makeDocumentClient({ dynamodb: new DynamoDBClient({}) }),
+    process.env.USER_TABLE_NAME!
+  ),
 });

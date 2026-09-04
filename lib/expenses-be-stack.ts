@@ -76,6 +76,7 @@ export class ExpensesBeStack extends cdk.Stack {
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: "expiresAt",
     });
 
     const howToTable = new Table(this, "HowToTable", {
@@ -200,6 +201,7 @@ export class ExpensesBeStack extends cdk.Stack {
       environment: {
         ...lambdaEnvironment,
         TABLE_NAME: calendarTable.tableName,
+        USER_TABLE_NAME: table.tableName,
         ADMIN_EMAILS,
       },
     });
@@ -328,6 +330,7 @@ export class ExpensesBeStack extends cdk.Stack {
     shoppingTable.grantReadWriteData(handleShoppingLambda);
     foodItemsTable.grantReadWriteData(handleShoppingLambda);
     calendarTable.grantReadWriteData(handleCalendarLambda);
+    table.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);
     howToSecretsKey.grantEncryptDecrypt(handleHowToLambda);
     wardrobeTable.grantReadWriteData(handleWardrobeLambda);
