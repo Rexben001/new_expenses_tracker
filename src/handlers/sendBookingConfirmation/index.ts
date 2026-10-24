@@ -17,7 +17,7 @@ export const handler: DynamoDBStreamHandler = async (event) => {
     const details = [
       `Booking reference: ${entry.confirmationCode}`,
       `Name: ${client.name}`,
-      `Service: ${entry.serviceName}`,
+      `Hair style: ${entry.hairStyleName}`,
       `Style: ${style.style}`,
       `Size: ${style.size}`,
       `Length: ${style.length}`,

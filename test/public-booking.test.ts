@@ -67,10 +67,17 @@ describe("public calendar booking", () => {
     });
     const result = body(response);
 
-    expect(result.services).toEqual(expect.arrayContaining([
+    expect(result.hairStyles).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "boho-braids", style: "boho" }),
     ]));
-    expect(result.availability).toEqual([{ date: "2026-10-27", slots: ["10:00", "13:00", "15:00", "16:30", "18:00"] }]);
+    expect(result.availability).toEqual(expect.arrayContaining([
+      expect.objectContaining({ date: "2026-10-24" }),
+      expect.objectContaining({ date: "2026-10-25" }),
+      { date: "2026-10-27", slots: ["10:00", "13:00", "15:00", "16:30"] },
+    ]));
+    expect(result.availability).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ date: "2027-01-25" }),
+    ]));
     expect(JSON.stringify(result)).not.toContain("private@example.com");
   });
 
@@ -84,7 +91,7 @@ describe("public calendar booking", () => {
         requestId: "11111111-1111-4111-8111-111111111111",
         date: "2026-10-27",
         time: "10:00",
-        serviceId: "boho-braids",
+        hairStyleId: "boho-braids",
         hairStyle: {
           style: "boho",
           size: "small",
@@ -142,7 +149,7 @@ describe("public calendar booking", () => {
         requestId: "11111111-1111-4111-8111-111111111111",
         date: "2026-10-27",
         time: "10:00",
-        serviceId: "boho-braids",
+        hairStyleId: "boho-braids",
         hairStyle: { style: "boho", size: "small", length: "waist" },
         client: { name: "Ada", email: "ada@example.com", phone: "+31612345678" },
       }),
@@ -159,9 +166,32 @@ describe("public calendar booking", () => {
         requestId: "11111111-1111-4111-8111-111111111111",
         date: "2026-10-27",
         time: "10:00",
-        serviceId: "boho-braids",
+        hairStyleId: "boho-braids",
         client: { name: "Ada", email: "ada@example.com", phone: "+31612345678" },
       }),
     })).rejects.toMatchObject({ status: 400 });
+  });
+
+  test("blocks slots before and after an appointment using both style durations", async () => {
+    const { dbService } = makeDb([
+      {
+        ...available("2026-10-31"),
+        SK: "CALENDAR#booked-duration",
+        id: "booked-duration",
+        status: "booked",
+        clients: [{ startTime: "12:00", hairStyle: { style: "boho" } }],
+      },
+    ]);
+
+    const response = await getPublicBookingAvailability({
+      dbService,
+      userId,
+      hairStyleId: "boho-braids",
+      today: new Date("2026-10-30T12:00:00.000Z"),
+    });
+
+    expect(body(response).availability).toEqual(expect.arrayContaining([
+      { date: "2026-10-31", slots: ["09:00", "15:00"] },
+    ]));
   });
 });

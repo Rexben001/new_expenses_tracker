@@ -25,7 +25,11 @@ export const makeHandler = ({
   try {
     if (!bookingUserId) throw new HttpError("Booking calendar is not configured", 503);
     if (event.httpMethod === "GET") {
-      return await getPublicBookingAvailability({ dbService, userId: bookingUserId });
+      return await getPublicBookingAvailability({
+        dbService,
+        userId: bookingUserId,
+        hairStyleId: event.queryStringParameters?.hairStyleId,
+      });
     }
     if (event.httpMethod === "POST") {
       assertAllowedOrigin(event);

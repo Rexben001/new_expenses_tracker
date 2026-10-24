@@ -7,7 +7,7 @@ import { HttpError } from "../../utils/http-error";
 import { successResponse } from "../../utils/response";
 import type { DbService } from "../shared/dbService";
 
-const ServiceSchema = z.object({
+const HairStyleCardSchema = z.object({
   id: z.string(),
   name: z.string(),
   category: z.string(),
@@ -17,23 +17,23 @@ const ServiceSchema = z.object({
   priceLabel: z.string(),
 });
 
-export type PublicBookingService = z.infer<typeof ServiceSchema>;
+export type PublicHairStyle = z.infer<typeof HairStyleCardSchema>;
 
-export const publicBookingServices: PublicBookingService[] = [
-  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: null, price: 45, priceLabel: "from €45" },
-  { id: "boho-braids", name: "Boho Braids", category: "Braids", style: "boho", duration: null, price: 55, priceLabel: "from €55" },
-  { id: "crochet-full-head", name: "Crochet — Full Head", category: "Crochet", style: "crochet", duration: null, price: 50, priceLabel: "€50" },
-  { id: "crochet-360", name: "Crochet 360 (Single)", category: "Crochet", style: "crochet 360", duration: null, price: 60, priceLabel: "€60" },
-  { id: "sew-in-leave-out", name: "Sew-in Leave Out", category: "Weave", style: "sew-in leave out", duration: null, price: 50, priceLabel: "€50" },
-  { id: "jayda-wayda", name: "Jayda Wayda", category: "Style", style: "jayda wayda", duration: null, price: 55, priceLabel: "€55" },
-  { id: "stitch-braids", name: "Stitch Braids (8–10)", category: "Braids", style: "stitch braids", duration: null, price: 40, priceLabel: "€40" },
+export const publicHairStyles: PublicHairStyle[] = [
+  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 60, price: 45, priceLabel: "from €45" },
+  { id: "boho-braids", name: "Boho Braids", category: "Braids", style: "boho", duration: 120, price: 55, priceLabel: "from €55" },
+  { id: "crochet-full-head", name: "Crochet — Full Head", category: "Crochet", style: "crochet", duration: 200, price: 50, priceLabel: "€50" },
+  { id: "crochet-360", name: "Crochet 360 (Single)", category: "Crochet", style: "crochet 360", duration: 240, price: 60, priceLabel: "€60" },
+  { id: "sew-in-leave-out", name: "Sew-in Leave Out", category: "Weave", style: "sew-in leave out", duration: 360, price: 50, priceLabel: "€50" },
+  { id: "jayda-wayda", name: "Jayda Wayda", category: "Style", style: "jayda wayda", duration: 120, price: 55, priceLabel: "€55" },
+  { id: "stitch-braids", name: "Stitch Braids (8–10)", category: "Braids", style: "stitch braids", duration: 60, price: 40, priceLabel: "€40" },
 ];
 
 const BookingRequestSchema = z.object({
   requestId: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  serviceId: z.string().min(1).max(80),
+  hairStyleId: z.string().min(1).max(80),
   hairStyle: z.object({
     style: z.string().trim().min(1).max(80),
     size: z.enum(["small", "smedium", "medium", "large"]),
@@ -53,24 +53,32 @@ type CalendarRecord = {
   id?: string;
   date?: string;
   status?: "available" | "booked" | "unavailable";
-  clients?: Array<{ startTime?: string }>;
+  clients?: Array<{ startTime?: string; hairStyle?: { style?: string } }>;
   startTime?: string;
   endTime?: string;
+  durationMinutes?: number;
+  hairStyleName?: string;
 };
 
 export async function getPublicBookingAvailability({
   dbService,
   userId,
+  hairStyleId,
   today = new Date(),
 }: {
   dbService: DbService;
   userId: string;
+  hairStyleId?: string;
   today?: Date;
 }) {
   const entries = await getCalendarRecords(dbService, userId);
+  const selectedStyle = hairStyleId
+    ? publicHairStyles.find(({ id }) => id === hairStyleId)
+    : undefined;
+  if (hairStyleId && !selectedStyle) throw new HttpError("Selected hair style is unavailable", 400);
   return successResponse({
-    services: publicBookingServices,
-    availability: buildAvailability(entries, today),
+    hairStyles: publicHairStyles,
+    availability: buildAvailability(entries, today, selectedStyle?.duration ?? 60),
   });
 }
 
@@ -86,14 +94,13 @@ export async function createPublicBooking({
   now?: Date;
 }) {
   const request = parseBookingRequest(body);
-  const service = publicBookingServices.find(({ id }) => id === request.serviceId);
-  if (!service) throw new HttpError("Selected service is unavailable", 400);
-  if (!publicBookingServices.some(({ style }) => style === request.hairStyle.style)) {
+  const selectedStyle = publicHairStyles.find(({ id }) => id === request.hairStyleId);
+  if (!selectedStyle || request.hairStyle.style !== selectedStyle.style) {
     throw new HttpError("Selected hair style is unavailable", 400);
   }
 
   const entries = await getCalendarRecords(dbService, userId);
-  const availability = buildAvailability(entries, now);
+  const availability = buildAvailability(entries, now, selectedStyle.duration ?? 60);
   const date = availability.find((item) => item.date === request.date);
   if (!date?.slots.includes(request.time)) {
     throw new HttpError("This appointment is no longer available", 409);
@@ -116,14 +123,15 @@ export async function createPublicBooking({
       email: request.client.email,
       phone: request.client.phone,
       startTime: request.time,
-      price: service.price,
+      price: selectedStyle.price,
       notes: request.client.notes || undefined,
       hairStyle: request.hairStyle,
     }],
     notes: `PrettybyDollzzz website booking ${confirmationCode}`,
     source: "prettybydollzzz-web",
     confirmationCode,
-    serviceName: service.name,
+    hairStyleName: selectedStyle.name,
+    durationMinutes: selectedStyle.duration,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -150,36 +158,59 @@ async function getCalendarRecords(dbService: DbService, userId: string) {
   ) as Promise<CalendarRecord[]>;
 }
 
-function buildAvailability(entries: CalendarRecord[], today = new Date()) {
-  const from = toDateKey(today);
+function buildAvailability(
+  entries: CalendarRecord[],
+  today = new Date(),
+  requestedDuration = 60,
+) {
+  const from = toAmsterdamDateKey(today);
   const to = toDateKey(addMonths(new Date(`${from}T12:00:00.000Z`), 3));
   const dates = new Map<string, CalendarRecord[]>();
+  const cursor = new Date(`${from}T12:00:00.000Z`);
+  const finalDate = new Date(`${to}T12:00:00.000Z`);
+  while (cursor <= finalDate) {
+    if (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) {
+      dates.set(toDateKey(cursor), []);
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
   for (const entry of entries) {
     if (!entry.date || entry.date < from || entry.date > to) continue;
     dates.set(entry.date, [...(dates.get(entry.date) ?? []), entry]);
   }
 
   return Array.from(dates.entries())
-    .filter(([, records]) =>
-      records.some(({ status }) => status === "available") &&
+    .filter(([date, records]) =>
+      (isWeekend(date) || records.some(({ status }) => status === "available")) &&
       !records.some(({ status }) => status === "unavailable")
     )
     .map(([date, records]) => {
       const availableRecords = records.filter(({ status }) => status === "available");
-      const bookedTimes = new Set(
-        records.flatMap((record) => [
-          ...(record.status === "booked" && record.startTime ? [record.startTime] : []),
-          ...(record.clients ?? []).flatMap((client) => client.startTime ? [client.startTime] : []),
-        ]),
-      );
+      const bookedIntervals = records.flatMap((record) => {
+        const entryStart = record.status === "booked" ? record.startTime : undefined;
+        const entryDuration = record.durationMinutes ?? durationForStyle(record.hairStyleName) ?? durationForStyle(record.clients?.[0]?.hairStyle?.style) ?? 60;
+        const entryInterval = entryStart
+          ? [{ start: timeToMinutes(entryStart), end: record.endTime ? timeToMinutes(record.endTime) : timeToMinutes(entryStart) + entryDuration }]
+          : [];
+        const clientIntervals = (record.clients ?? []).flatMap((client) => {
+          if (!client.startTime) return [];
+          const duration = durationForStyle(client.hairStyle?.style) ?? record.durationMinutes ?? 60;
+          const start = timeToMinutes(client.startTime);
+          return [{ start, end: start + duration }];
+        });
+        return [...entryInterval, ...clientIntervals];
+      });
       const windows = availableRecords.filter((record) => record.startTime || record.endTime);
       const slots = defaultSlots(date).filter((slot) => {
-        if (bookedTimes.has(slot)) return false;
-        if (!windows.length) return true;
-        return windows.some((window) =>
-          (!window.startTime || slot >= window.startTime) &&
-          (!window.endTime || slot < window.endTime)
-        );
+        const start = timeToMinutes(slot);
+        const end = start + requestedDuration;
+        if (bookedIntervals.some((booked) => start < booked.end && end > booked.start)) return false;
+        if (!windows.length) return end <= timeToMinutes("18:00");
+        return windows.some((window) => {
+          const windowStart = timeToMinutes(window.startTime ?? "00:00");
+          const windowEnd = timeToMinutes(window.endTime ?? "23:59");
+          return start >= windowStart && end <= windowEnd;
+        });
       });
       return { date, slots };
     })
@@ -192,6 +223,21 @@ function defaultSlots(date: string) {
   if (day === 6) return ["09:00", "10:30", "12:00", "13:30", "15:00"];
   if (day === 2 || day === 4) return ["10:00", "11:30", "13:00", "15:00", "16:30", "18:00"];
   return ["09:00", "10:30", "12:00", "14:00", "15:30", "17:00"];
+}
+
+function durationForStyle(style?: string) {
+  if (!style) return undefined;
+  return publicHairStyles.find((item) => item.style === style || item.name === style)?.duration ?? undefined;
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function isWeekend(date: string) {
+  const day = new Date(`${date}T12:00:00.000Z`).getUTCDay();
+  return day === 0 || day === 6;
 }
 
 function parseBookingRequest(body: string) {
@@ -209,6 +255,17 @@ function slotId(userId: string, date: string, time: string) {
 
 function toDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function toAmsterdamDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Amsterdam",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
 export const publicBookingInternals = { buildAvailability, defaultSlots, slotId };
