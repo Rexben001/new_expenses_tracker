@@ -107,7 +107,7 @@ const handlePublicBookingRoutes = ({
   const publicResource = api.root.addResource("public");
   const salon = publicResource.addResource("prettybydollzzz");
   const booking = salon.addResource("booking");
-  addCorsPreflight(booking, ["https://prettybydollzzz.rexben.chatgpt.site"]);
+  addCorsPreflight(booking, ["https://prettybydollzzz.netlify.app"]);
   booking.addMethod("GET", integration);
   booking.addMethod("POST", integration);
 };

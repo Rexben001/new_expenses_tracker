@@ -219,7 +219,7 @@ export class ExpensesBeStack extends cdk.Stack {
         ...lambdaEnvironment,
         TABLE_NAME: calendarTable.tableName,
         BOOKING_USER_ID: "e2b5c4a4-1051-705e-8904-c843af6f3cbe",
-        ALLOWED_BOOKING_ORIGINS: "https://prettybydollzzz.rexben.chatgpt.site",
+        ALLOWED_BOOKING_ORIGINS: "https://prettybydollzzz.netlify.app",
       },
     });
 
