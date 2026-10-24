@@ -238,6 +238,7 @@ export class ExpensesBeStack extends cdk.Stack {
           ...lambdaEnvironment,
           BOOKING_EMAIL_FROM: BOOKING_OWNER_EMAIL,
           BOOKING_OWNER_EMAIL,
+          BREVO_API_KEY: process.env.BREVO_API_KEY
         },
       }
     );

@@ -28,23 +28,40 @@ export const handler: DynamoDBStreamHandler = async (event) => {
       style.additionalDetails ? `Style details: ${style.additionalDetails}` : "",
     ].filter(Boolean).join("\n");
 
-    await ses.send(new SendEmailCommand({
-      FromEmailAddress: process.env.BOOKING_EMAIL_FROM!,
-      Destination: {
-        ToAddresses: [client.email],
-        BccAddresses: [process.env.BOOKING_OWNER_EMAIL!],
+   
+const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+  method: "POST",
+  headers: {
+    "api-key": process.env.BREVO_API_KEY!,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  body: JSON.stringify({
+    sender: {
+      name: "Hair Salon",
+      email: process.env.BOOKING_EMAIL_FROM!,
+    },
+    to: [
+      {
+        email: client.email,
       },
-      Content: {
-        Simple: {
-          Subject: { Data: subject, Charset: "UTF-8" },
-          Body: {
-            Text: {
-              Data: `Your appointment is booked.\n\n${details}\n\nHair is not included. A €20 non-refundable deposit is required.`,
-              Charset: "UTF-8",
-            },
-          },
-        },
-      },
-    }));
+    ],
+    subject,
+    textContent: `Your appointment is booked.
+
+${details}
+
+Hair is not included. A €20 non-refundable deposit is required.`,
+  }),
+});
+
+if (!response.ok) {
+  const error = await response.text();
+  throw new Error(`Brevo email failed (${response.status}): ${error}`);
+}
+
+const result = await response.json();
+console.log("Brevo message accepted:", result.messageId);
+
   }
 };
