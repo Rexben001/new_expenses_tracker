@@ -1,9 +1,12 @@
 import { aws_apigateway } from "aws-cdk-lib";
 import { MethodOptions } from "aws-cdk-lib/aws-apigateway";
 
-const addCorsPreflight = (resource: aws_apigateway.Resource) => {
+const addCorsPreflight = (
+  resource: aws_apigateway.Resource,
+  allowOrigins = ["*"],
+) => {
   resource.addCorsPreflight({
-    allowOrigins: ["*"], // or your frontend URL e.g. ['https://myapp.com']
+    allowOrigins,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   });
@@ -21,6 +24,7 @@ export const handleRoutes = (
     mealPlansIntegration,
     shoppingIntegration,
     calendarIntegration,
+    publicBookingIntegration,
     howToIntegration,
     receiptsIntegration,
     videosIntegration,
@@ -34,6 +38,7 @@ export const handleRoutes = (
     mealPlansIntegration: aws_apigateway.LambdaIntegration;
     shoppingIntegration: aws_apigateway.LambdaIntegration;
     calendarIntegration: aws_apigateway.LambdaIntegration;
+    publicBookingIntegration: aws_apigateway.LambdaIntegration;
     howToIntegration: aws_apigateway.LambdaIntegration;
     receiptsIntegration: aws_apigateway.LambdaIntegration;
     videosIntegration: aws_apigateway.LambdaIntegration;
@@ -68,6 +73,7 @@ export const handleRoutes = (
     authorizerParams,
     integration: calendarIntegration,
   });
+  handlePublicBookingRoutes({ api, integration: publicBookingIntegration });
   handleHowToRoutes({
     api,
     authorizerParams,
@@ -89,6 +95,21 @@ export const handleRoutes = (
     authorizerParams,
     integration: wardrobeIntegration,
   });
+};
+
+const handlePublicBookingRoutes = ({
+  api,
+  integration,
+}: {
+  api: aws_apigateway.RestApi;
+  integration: aws_apigateway.LambdaIntegration;
+}) => {
+  const publicResource = api.root.addResource("public");
+  const salon = publicResource.addResource("prettybydollzzz");
+  const booking = salon.addResource("booking");
+  addCorsPreflight(booking, ["https://prettybydollzzz.rexben.chatgpt.site"]);
+  booking.addMethod("GET", integration);
+  booking.addMethod("POST", integration);
 };
 
 const handleWardrobeRoutes = ({

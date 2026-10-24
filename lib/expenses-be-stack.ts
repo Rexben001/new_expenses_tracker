@@ -6,6 +6,9 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as kms from "aws-cdk-lib/aws-kms";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as ses from "aws-cdk-lib/aws-ses";
+import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import { StartingPosition } from "aws-cdk-lib/aws-lambda";
 
 import { handleRoutes } from "./apigw";
 import {
@@ -35,6 +38,7 @@ const ADMIN_EMAILS = [
   "dollyrexben@gmail.com",
   "tmgbolade.96@gmail.com",
 ].join(",");
+const BOOKING_OWNER_EMAIL = "dollyrexben@gmail.com";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -77,6 +81,7 @@ export class ExpensesBeStack extends cdk.Stack {
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: "expiresAt",
+      stream: cdk.aws_dynamodb.StreamViewType.NEW_IMAGE,
     });
 
     const howToTable = new Table(this, "HowToTable", {
@@ -206,6 +211,47 @@ export class ExpensesBeStack extends cdk.Stack {
       },
     });
 
+    const handlePublicBookingLambda = new NodejsFunction(this, "HandlePublicBookingFn", {
+      runtime: lambdaRuntime,
+      entry: path.join(__dirname, "../src/handlers/handlePublicBooking/index.ts"),
+      handler: "handler",
+      environment: {
+        ...lambdaEnvironment,
+        TABLE_NAME: calendarTable.tableName,
+        BOOKING_USER_ID: "e2b5c4a4-1051-705e-8904-c843af6f3cbe",
+        ALLOWED_BOOKING_ORIGINS: "https://prettybydollzzz.rexben.chatgpt.site",
+      },
+    });
+
+    new ses.CfnEmailIdentity(this, "PrettyByDollzzzEmailIdentity", {
+      emailIdentity: BOOKING_OWNER_EMAIL,
+    });
+
+    const sendBookingConfirmationLambda = new NodejsFunction(
+      this,
+      "SendBookingConfirmationFn",
+      {
+        runtime: lambdaRuntime,
+        entry: path.join(__dirname, "../src/handlers/sendBookingConfirmation/index.ts"),
+        handler: "handler",
+        environment: {
+          ...lambdaEnvironment,
+          BOOKING_EMAIL_FROM: BOOKING_OWNER_EMAIL,
+          BOOKING_OWNER_EMAIL,
+        },
+      }
+    );
+    sendBookingConfirmationLambda.addEventSource(new DynamoEventSource(calendarTable, {
+      startingPosition: StartingPosition.LATEST,
+      batchSize: 5,
+      retryAttempts: 3,
+      bisectBatchOnError: true,
+    }));
+    sendBookingConfirmationLambda.addToRolePolicy(new PolicyStatement({
+      actions: ["ses:SendEmail"],
+      resources: ["*"],
+    }));
+
     const handleHowToLambda = new NodejsFunction(this, "HandleHowToFn", {
       runtime: lambdaRuntime,
       entry: path.join(__dirname, "../src/handlers/handleHowTo/index.ts"),
@@ -330,6 +376,11 @@ export class ExpensesBeStack extends cdk.Stack {
     shoppingTable.grantReadWriteData(handleShoppingLambda);
     foodItemsTable.grantReadWriteData(handleShoppingLambda);
     calendarTable.grantReadWriteData(handleCalendarLambda);
+    calendarTable.grant(
+      handlePublicBookingLambda,
+      "dynamodb:Query",
+      "dynamodb:PutItem"
+    );
     table.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);
     howToSecretsKey.grantEncryptDecrypt(handleHowToLambda);
@@ -484,6 +535,7 @@ export class ExpensesBeStack extends cdk.Stack {
       mealPlansIntegration,
       shoppingIntegration,
       calendarIntegration,
+      publicBookingIntegration: new apigateway.LambdaIntegration(handlePublicBookingLambda),
       howToIntegration,
       receiptsIntegration,
       videosIntegration,
