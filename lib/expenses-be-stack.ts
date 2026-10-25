@@ -81,7 +81,7 @@ export class ExpensesBeStack extends cdk.Stack {
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: "expiresAt",
-      stream: cdk.aws_dynamodb.StreamViewType.NEW_IMAGE,
+      stream: cdk.aws_dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
     const howToTable = new Table(this, "HowToTable", {
