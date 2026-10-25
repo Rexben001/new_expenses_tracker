@@ -71,6 +71,11 @@ const BookingRequestSchema = z.object({
       }),
     notes: z.string().trim().max(1000).optional().default(""),
   }),
+  photos: z.array(z.object({
+    key: z.string().max(300),
+    name: z.string().trim().min(1).max(150),
+    contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  })).max(2).optional().default([]),
   website: z.string().max(0).optional(),
 });
 
@@ -139,6 +144,9 @@ export async function createPublicBooking({
   if (!selectedStyle || request.hairStyle.style !== selectedStyle.style) {
     throw new HttpError("Selected hair style is unavailable", 400);
   }
+  if (request.photos.some(({ key }) => !key.startsWith(`booking-photos/${request.requestId}/`))) {
+    throw new HttpError("Invalid booking photo", 400);
+  }
   const selectedExtra = request.extraId
     ? publicBookingExtras.find(({ id }) => id === request.extraId)
     : undefined;
@@ -185,6 +193,7 @@ export async function createPublicBooking({
     manageToken,
     hairStyleName: selectedStyle.name,
     totalPrice,
+    photos: request.photos,
     durationMinutes: selectedStyle.duration,
     createdAt: timestamp,
     updatedAt: timestamp,

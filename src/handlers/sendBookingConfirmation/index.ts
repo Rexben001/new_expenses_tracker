@@ -1,5 +1,8 @@
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import type { DynamoDBStreamHandler } from "aws-lambda";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+
+const s3Client = new S3Client({});
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -105,6 +108,20 @@ async function sendEmail(payload: Record<string, any>) {
   console.log("Brevo message accepted:", result.messageId);
 }
 
+async function loadPhotoAttachments(entry: Record<string, any>) {
+  const bucket = process.env.BOOKING_IMAGE_BUCKET;
+  if (!bucket || !Array.isArray(entry.photos)) return [];
+  return Promise.all(entry.photos.slice(0, 2).map(async (photo: Record<string, any>, index: number) => {
+    const object = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: photo.key }));
+    if (!object.Body) throw new Error("Booking photo is empty");
+    const bytes = await object.Body.transformToByteArray();
+    return {
+      name: String(photo.name || `booking-photo-${index + 1}.jpg`).replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 150),
+      content: Buffer.from(bytes).toString("base64"),
+    };
+  }));
+}
+
 export const handler: DynamoDBStreamHandler = async (event) => {
   for (const record of event.Records) {
     if (!record.dynamodb?.NewImage) continue;
@@ -129,6 +146,7 @@ export const handler: DynamoDBStreamHandler = async (event) => {
     }
     if (record.eventName !== "INSERT") continue;
     const style = client.hairStyle ?? {};
+    const attachment = await loadPhotoAttachments(entry);
     const { cancelUrl, rescheduleUrl } = bookingManageUrls(entry);
     const subject = entry.rescheduledFrom
       ? `PrettybyDollzzz appointment rescheduled ${entry.confirmationCode}`
@@ -157,6 +175,7 @@ export const handler: DynamoDBStreamHandler = async (event) => {
           },
         ],
         subject,
+        attachment: attachment.length ? attachment : undefined,
         htmlContent: bookingEmailHtml(entry, client, style),
         textContent: `Your appointment is booked.
 

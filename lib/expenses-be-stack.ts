@@ -112,6 +112,20 @@ export class ExpensesBeStack extends cdk.Stack {
         },
       ],
     });
+    const bookingImageBucket = new s3.Bucket(this, "PrettyByDollzzzBookingImageBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      lifecycleRules: [{ expiration: cdk.Duration.days(30) }],
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      cors: [{
+        allowedHeaders: ["Content-Type"],
+        allowedMethods: [s3.HttpMethods.PUT],
+        allowedOrigins: ["https://prettybydollzzz.netlify.app"],
+        exposedHeaders: ["ETag"],
+        maxAge: 300,
+      }],
+    });
 
     const howToSecretsKey = new kms.Key(this, "HowToSecretsKey", {
       alias: "alias/expenses-how-to-secrets",
@@ -219,6 +233,7 @@ export class ExpensesBeStack extends cdk.Stack {
         ...lambdaEnvironment,
         TABLE_NAME: calendarTable.tableName,
         BOOKING_USER_ID: "e2b5c4a4-1051-705e-8904-c843af6f3cbe",
+        BOOKING_IMAGE_BUCKET: bookingImageBucket.bucketName,
         ALLOWED_BOOKING_ORIGINS: "https://prettybydollzzz.netlify.app",
       },
     });
@@ -239,6 +254,7 @@ export class ExpensesBeStack extends cdk.Stack {
           BOOKING_EMAIL_FROM: BOOKING_OWNER_EMAIL,
           BOOKING_OWNER_EMAIL,
           PUBLIC_SITE_URL: "https://prettybydollzzz.netlify.app/",
+          BOOKING_IMAGE_BUCKET: bookingImageBucket.bucketName,
           BREVO_API_KEY: process.env.BREVO_API_KEY!
         },
       }
@@ -253,6 +269,8 @@ export class ExpensesBeStack extends cdk.Stack {
       actions: ["ses:SendEmail"],
       resources: ["*"],
     }));
+    bookingImageBucket.grantPut(handlePublicBookingLambda);
+    bookingImageBucket.grantRead(sendBookingConfirmationLambda);
 
     const handleHowToLambda = new NodejsFunction(this, "HandleHowToFn", {
       runtime: lambdaRuntime,

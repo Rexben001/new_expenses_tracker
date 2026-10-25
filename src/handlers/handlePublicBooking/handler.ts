@@ -9,13 +9,20 @@ import { HttpError } from "../../utils/http-error";
 import { createInvocationLogger } from "../../utils/logger";
 import { errorResponseFromError } from "../../utils/response";
 import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const makeHandler = ({
   dbService,
   bookingUserId,
+  s3Client,
+  bookingImageBucket,
 }: {
   dbService: DbService;
   bookingUserId: string;
+  s3Client: S3Client;
+  bookingImageBucket: string;
 }) => async (event: APIGatewayEvent, context: Context) => {
   const logger = createInvocationLogger(context, {
     handler: "handlePublicBooking",
@@ -38,6 +45,20 @@ export const makeHandler = ({
         try { return JSON.parse(event.body ?? "{}").action; } catch { return undefined; }
       })();
       const sourceIp = event.requestContext.identity?.sourceIp ?? "unknown";
+      if (action === "create-photo-upload") {
+        const input = parsePhotoUploadRequest(event.body ?? "");
+        await enforceRateLimit(dbService, sourceIp, `photo-upload-${input.kind}`, 5);
+        if (!bookingImageBucket) throw new HttpError("Photo uploads are unavailable", 503);
+        const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[input.contentType];
+        const key = `booking-photos/${input.requestId}/${input.kind}-${randomUUID()}.${extension}`;
+        const uploadUrl = await getSignedUrl(s3Client, new PutObjectCommand({
+          Bucket: bookingImageBucket,
+          Key: key,
+          ContentType: input.contentType,
+          ContentLength: input.size,
+        }), { expiresIn: 300 });
+        return { statusCode: 200, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ key, uploadUrl }) };
+      }
       await enforceRateLimit(
         dbService,
         sourceIp,
@@ -63,6 +84,21 @@ export const makeHandler = ({
     return errorResponseFromError(error);
   }
 };
+
+function parsePhotoUploadRequest(body: string) {
+  let input: Record<string, any>;
+  try { input = JSON.parse(body); } catch { throw new HttpError("Invalid photo upload request", 400); }
+  if (!/^[0-9a-f-]{36}$/i.test(input.requestId ?? "") || !["style", "hair"].includes(input.kind)) {
+    throw new HttpError("Invalid photo upload request", 400);
+  }
+  if (!["image/jpeg", "image/png", "image/webp"].includes(input.contentType) || !Number.isInteger(input.size) || input.size < 1 || input.size > 2 * 1024 * 1024) {
+    throw new HttpError("Photos must be JPG, PNG, or WebP and no larger than 2 MB", 400);
+  }
+  if (typeof input.fileName !== "string" || !input.fileName.trim() || input.fileName.length > 150) {
+    throw new HttpError("Invalid photo filename", 400);
+  }
+  return input as { requestId: string; kind: "style" | "hair"; contentType: "image/jpeg" | "image/png" | "image/webp"; size: number; fileName: string };
+}
 
 function assertAllowedOrigin(event: APIGatewayEvent) {
   const origin = event.headers?.origin ?? event.headers?.Origin;
