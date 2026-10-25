@@ -51,8 +51,8 @@ const BookingRequestSchema = z.object({
   hairStyleId: z.string().min(1).max(80),
   hairStyle: z.object({
     style: z.string().trim().min(1).max(80),
-    size: z.enum(["smedium", "medium", "large"]),
-    length: z.enum(["shoulder", "bra", "waist"]),
+    size: z.enum(["smedium", "medium", "large"]).optional(),
+    length: z.enum(["shoulder", "bra", "waist"]).optional(),
     additionalDetails: z.string().trim().max(500).optional(),
   }),
   extraId: z.enum(["curls-at-tip", "blending-of-colors", "extra-length-below-waist"]).optional(),
@@ -144,14 +144,18 @@ export async function createPublicBooking({
   if (!selectedStyle || request.hairStyle.style !== selectedStyle.style) {
     throw new HttpError("Selected hair style is unavailable", 400);
   }
+  if (selectedStyle.pricing && (!request.hairStyle.size || !request.hairStyle.length)) {
+    throw new HttpError("Size and length are required for this hair style", 400);
+  }
   if (request.photos.some(({ key }) => !key.startsWith(`booking-photos/${request.requestId}/`))) {
     throw new HttpError("Invalid booking photo", 400);
   }
   const selectedExtra = request.extraId
     ? publicBookingExtras.find(({ id }) => id === request.extraId)
     : undefined;
-  const basePrice = selectedStyle.pricing?.[request.hairStyle.size]?.[request.hairStyle.length]
-    ?? selectedStyle.price;
+  const basePrice = request.hairStyle.size && request.hairStyle.length
+    ? selectedStyle.pricing?.[request.hairStyle.size]?.[request.hairStyle.length] ?? selectedStyle.price
+    : selectedStyle.price;
   const totalPrice = basePrice + (selectedExtra?.price ?? 0);
 
   const entries = await getCalendarRecords(dbService, userId);

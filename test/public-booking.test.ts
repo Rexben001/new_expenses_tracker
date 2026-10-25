@@ -250,6 +250,26 @@ describe("public calendar booking", () => {
     ]));
   });
 
+  test("allows fixed-price styles without size or length", async () => {
+    const { dbService, items } = makeDb([available()]);
+    await createPublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-24T12:00:00.000Z"),
+      body: JSON.stringify({
+        requestId: "33333333-3333-4333-8333-333333333333",
+        date: "2026-10-27",
+        time: "10:00",
+        hairStyleId: "crochet-full-head",
+        hairStyle: { style: "crochet" },
+        client: { name: "Ada", email: "ada@example.com", phone: "0612345678" },
+      }),
+    });
+    expect(Array.from(items.values())).toEqual(expect.arrayContaining([
+      expect.objectContaining({ hairStyleName: "Crochet — Full Head", totalPrice: 50 }),
+    ]));
+  });
+
   test("blocks slots before and after an appointment using both style durations", async () => {
     const { dbService } = makeDb([
       {
