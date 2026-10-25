@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { DocumentClient } from "../../utils/dynamodb";
 import {
   DeleteItemCommand,
@@ -31,6 +31,7 @@ export interface DbService {
     filterExpression: string,
     expressionValues: Record<string, any>
   ): Promise<Record<string, any>[]>;
+  incrementCounter?(key: Record<string, any>, initialValue: number): Promise<number>;
 }
 
 export function makeDbService(
@@ -62,6 +63,18 @@ export function makeDbService(
           "attribute_not_exists(PK) AND attribute_not_exists(SK)", // optional safety
       });
       await client.send(command);
+    },
+
+    async incrementCounter(key: Record<string, any>, initialValue: number) {
+      const response = await client.send(new UpdateCommand({
+        TableName: tableName,
+        Key: key,
+        UpdateExpression: "SET #value = if_not_exists(#value, :initial) + :one",
+        ExpressionAttributeNames: { "#value": "value" },
+        ExpressionAttributeValues: { ":initial": initialValue, ":one": 1 },
+        ReturnValues: "UPDATED_NEW",
+      }));
+      return Number(response.Attributes?.value);
     },
 
     async queryItems(

@@ -20,6 +20,13 @@ function makeDb(initial: Record<string, any>[] = []) {
       }
       items.set(key, item);
     }),
+    incrementCounter: jest.fn(async (key, initialValue) => {
+      const mapKey = `${key.PK}|${key.SK}`;
+      const current = items.get(mapKey)?.value ?? initialValue;
+      const value = current + 1;
+      items.set(mapKey, { ...key, value });
+      return value;
+    }),
     queryItems: jest.fn(async () => Array.from(items.values())),
     updateItem: jest.fn(async (key, _expression, _names, values) => {
       const item = items.get(`${key.PK}|${key.SK}`);
@@ -85,7 +92,7 @@ describe("public calendar booking", () => {
     expect(result.availability).toEqual(expect.arrayContaining([
       expect.objectContaining({ date: "2026-10-24" }),
       expect.objectContaining({ date: "2026-10-25" }),
-      { date: "2026-10-27", slots: ["10:00", "13:00", "15:00", "16:30"] },
+      { date: "2026-10-27", slots: ["10:00", "15:00", "16:30"] },
     ]));
     expect(result.availability).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ date: "2027-01-25" }),
@@ -122,7 +129,7 @@ describe("public calendar booking", () => {
     const result = body(response);
 
     expect(response.statusCode).toBe(201);
-    expect(result.confirmationCode).toMatch(/^PBD-[A-F0-9]{8}$/);
+    expect(result.confirmationCode).toBe("PBD-2026C45");
     expect(Array.from(items.values())).toEqual(expect.arrayContaining([
       expect.objectContaining({
         date: "2026-10-27",
@@ -264,6 +271,24 @@ describe("public calendar booking", () => {
     expect(body(response).availability).toEqual(expect.arrayContaining([
       { date: "2026-10-31", slots: ["09:00", "15:00"] },
     ]));
+  });
+
+  test("blocks 09:00 after a legacy 08:00 appointment with missing duration", async () => {
+    const { dbService } = makeDb([{
+      ...available("2026-10-31"),
+      SK: "CALENDAR#legacy-8am",
+      id: "legacy-8am",
+      status: "booked",
+      clients: [{ startTime: "08:00", hairStyle: { style: "Legacy custom style" } }],
+    }]);
+    const response = await getPublicBookingAvailability({
+      dbService,
+      userId,
+      hairStyleId: "knotless-styles",
+      today: new Date("2026-10-30T12:00:00.000Z"),
+    });
+    const date = body(response).availability.find((item: any) => item.date === "2026-10-31");
+    expect(date?.slots).not.toContain("09:00");
   });
 
   test("loads and cancels a booking through its private management token", async () => {

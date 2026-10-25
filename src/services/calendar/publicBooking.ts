@@ -162,7 +162,7 @@ export async function createPublicBooking({
   }
 
   const id = slotId(userId, request.date, request.time);
-  const confirmationCode = `PBD-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  const confirmationCode = await nextConfirmationCode(dbService, userId, request.date);
   const manageToken = randomUUID();
   const timestamp = now.toISOString();
   const item = {
@@ -269,7 +269,7 @@ export async function managePublicBooking({
     throw new HttpError("This appointment is no longer available", 409);
   }
   const newId = slotId(userId, request.date, request.time);
-  const newConfirmationCode = `PBD-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  const newConfirmationCode = await nextConfirmationCode(dbService, userId, request.date);
   const nextBooking = {
     ...booking,
     SK: `CALENDAR#${newId}`,
@@ -334,13 +334,13 @@ function buildAvailability(
       const bookedIntervals = records.flatMap((record) => {
         if (record.status === "cancelled" || record.status === "rescheduled") return [];
         const entryStart = record.status === "booked" ? record.startTime : undefined;
-        const entryDuration = record.durationMinutes ?? durationForStyle(record.hairStyleName) ?? durationForStyle(record.clients?.[0]?.hairStyle?.style) ?? 60;
+        const entryDuration = record.durationMinutes ?? durationForStyle(record.hairStyleName) ?? durationForStyle(record.clients?.[0]?.hairStyle?.style) ?? 120;
         const entryInterval = entryStart
           ? [{ start: timeToMinutes(entryStart), end: record.endTime ? timeToMinutes(record.endTime) : timeToMinutes(entryStart) + entryDuration }]
           : [];
         const clientIntervals = (record.clients ?? []).flatMap((client) => {
           if (!client.startTime) return [];
-          const duration = durationForStyle(client.hairStyle?.style) ?? record.durationMinutes ?? 60;
+          const duration = durationForStyle(client.hairStyle?.style) ?? record.durationMinutes ?? 120;
           const start = timeToMinutes(client.startTime);
           return [{ start, end: start + duration }];
         });
@@ -373,7 +373,18 @@ function defaultSlots(date: string) {
 
 function durationForStyle(style?: string) {
   if (!style) return undefined;
-  return publicHairStyles.find((item) => item.style === style || item.name === style)?.duration ?? undefined;
+  const normalized = style.trim().toLowerCase();
+  return publicHairStyles.find((item) => item.style.toLowerCase() === normalized || item.name.toLowerCase() === normalized)?.duration ?? undefined;
+}
+
+async function nextConfirmationCode(dbService: DbService, userId: string, appointmentDate: string) {
+  const year = appointmentDate.slice(0, 4);
+  if (!dbService.incrementCounter) return `PBD-${year}C45`;
+  const count = await dbService.incrementCounter(
+    { PK: createPk(userId), SK: `BOOKING_COUNTER#${year}` },
+    44,
+  );
+  return `PBD-${year}C${count}`;
 }
 
 function timeToMinutes(value: string) {
