@@ -37,7 +37,9 @@ function makeDb(initial: Record<string, any>[] = []) {
       delete item.manageToken;
       return item;
     }),
-    deleteItem: jest.fn(),
+    deleteItem: jest.fn(async (key) => {
+      items.delete(`${key.PK}|${key.SK}`);
+    }),
     deleteItemsByPrefix: jest.fn(),
     scanItems: jest.fn(),
   };
@@ -358,10 +360,34 @@ describe("public calendar booking", () => {
       body: JSON.stringify({ action: "cancel", manageToken }),
     }));
     expect(cancelled.cancelled).toBe(true);
-    expect(items.get(`${booking.PK}|${booking.SK}`)).toEqual(expect.objectContaining({ status: "cancelled" }));
+    expect(items.get(`${booking.PK}|${booking.SK}`)).toBeUndefined();
     await expect(managePublicBooking({
       dbService, userId,
       body: JSON.stringify({ action: "details", manageToken }),
     })).rejects.toMatchObject({ status: 404 });
+  });
+
+  test("rejects cancellation inside the 24-hour Amsterdam window", async () => {
+    const manageToken = "55555555-5555-4555-8555-555555555555";
+    const booking = {
+      PK: `USER#${userId}`,
+      SK: "CALENDAR#late-cancel",
+      id: "late-cancel",
+      date: "2026-10-31",
+      status: "booked",
+      startTime: "12:00",
+      hairStyleName: "Boho Braids",
+      confirmationCode: "PBD-2026C55",
+      manageToken,
+      clients: [{ startTime: "12:00", hairStyle: { style: "boho" } }],
+    };
+    const { dbService, items } = makeDb([booking]);
+    await expect(managePublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-30T12:30:00.000Z"),
+      body: JSON.stringify({ action: "cancel", manageToken }),
+    })).rejects.toMatchObject({ status: 409 });
+    expect(items.get(`${booking.PK}|${booking.SK}`)).toBeDefined();
   });
 });

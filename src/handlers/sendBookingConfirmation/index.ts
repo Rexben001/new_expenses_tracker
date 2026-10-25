@@ -124,15 +124,28 @@ async function loadPhotoAttachments(entry: Record<string, any>) {
 
 export const handler: DynamoDBStreamHandler = async (event) => {
   for (const record of event.Records) {
-    if (!record.dynamodb?.NewImage) continue;
-    const entry = unmarshall(record.dynamodb.NewImage as never) as Record<string, any>;
+    const image = record.eventName === "REMOVE" ? record.dynamodb?.OldImage : record.dynamodb?.NewImage;
+    if (!image) continue;
+    const entry = unmarshall(image as never) as Record<string, any>;
     if (entry.source !== "prettybydollzzz-web") continue;
 
     const client = entry.clients?.[0];
     if (!client?.email) continue;
+    if (record.eventName === "REMOVE") {
+      if (entry.status === "booked") {
+        await sendEmail({
+          to: [{ email: client.email }],
+          subject: `PrettybyDollzzz appointment cancelled ${entry.confirmationCode}`,
+          htmlContent: cancellationEmailHtml(entry, client),
+          textContent: `Hi ${client.name},\n\nYour appointment on ${entry.date} at ${entry.startTime} has been cancelled.\nReference: ${entry.confirmationCode}`,
+        });
+      }
+      continue;
+    }
     if (record.eventName === "MODIFY") {
-      const previous = record.dynamodb.OldImage
-        ? unmarshall(record.dynamodb.OldImage as never) as Record<string, any>
+      const oldImage = record.dynamodb?.OldImage;
+      const previous = oldImage
+        ? unmarshall(oldImage as never) as Record<string, any>
         : undefined;
       if (entry.status === "cancelled" && previous?.status === "booked") {
         await sendEmail({

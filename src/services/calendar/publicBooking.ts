@@ -250,6 +250,7 @@ export async function managePublicBooking({
   if (!selectedStyle) throw new HttpError("The booked hair style is no longer available", 409);
 
   if (request.action === "details") {
+    const canModify = isOutsideChangeWindow(booking, now);
     return successResponse({
       booking: {
         confirmationCode: booking.confirmationCode,
@@ -257,19 +258,16 @@ export async function managePublicBooking({
         hairStyleName: selectedStyle.name,
         date: booking.date,
         time: booking.startTime,
+        canModify,
       },
       availability: buildAvailability(entries, now, selectedStyle.duration ?? 60),
     });
   }
 
+  assertOutsideChangeWindow(booking, now);
   const timestamp = now.toISOString();
   if (request.action === "cancel") {
-    await dbService.updateItem(
-      { PK: booking.PK, SK: booking.SK },
-      "SET #status = :status, updatedAt = :updatedAt REMOVE manageToken",
-      { "#status": "status" },
-      { ":status": "cancelled", ":updatedAt": timestamp },
-    );
+    await dbService.deleteItem({ PK: booking.PK, SK: booking.SK });
     return successResponse({ cancelled: true, confirmationCode: booking.confirmationCode });
   }
 
@@ -299,11 +297,37 @@ export async function managePublicBooking({
     { "#status": "status" },
     { ":status": "rescheduled", ":rescheduledTo": newId, ":updatedAt": timestamp },
   );
+  await dbService.deleteItem({ PK: booking.PK, SK: booking.SK });
   return successResponse({
     rescheduled: true,
     confirmationCode: newConfirmationCode,
     booking: { date: request.date, time: request.time, hairStyleName: selectedStyle.name },
   });
+}
+
+function isOutsideChangeWindow(booking: CalendarRecord, now: Date) {
+  if (!booking.date || !booking.startTime) return false;
+  return amsterdamAppointmentInstant(booking.date, booking.startTime).getTime() - now.getTime() >= 24 * 60 * 60 * 1000;
+}
+
+function assertOutsideChangeWindow(booking: CalendarRecord, now: Date) {
+  if (!isOutsideChangeWindow(booking, now)) {
+    throw new HttpError("Appointments can only be cancelled or rescheduled at least 24 hours before the start time", 409);
+  }
+}
+
+function amsterdamAppointmentInstant(date: string, time: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const wallClockAsUtc = Date.UTC(year, month - 1, day, hour, minute);
+  const offsetName = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Amsterdam",
+    timeZoneName: "longOffset",
+  }).formatToParts(new Date(wallClockAsUtc)).find(({ type }) => type === "timeZoneName")?.value;
+  const match = offsetName?.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!match) throw new Error("Could not determine Europe/Amsterdam offset");
+  const offsetMinutes = (Number(match[2]) * 60 + Number(match[3])) * (match[1] === "+" ? 1 : -1);
+  return new Date(wallClockAsUtc - offsetMinutes * 60 * 1000);
 }
 
 async function getCalendarRecords(dbService: DbService, userId: string) {

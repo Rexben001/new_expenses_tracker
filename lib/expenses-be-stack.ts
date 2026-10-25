@@ -400,7 +400,8 @@ export class ExpensesBeStack extends cdk.Stack {
       handlePublicBookingLambda,
       "dynamodb:Query",
       "dynamodb:PutItem",
-      "dynamodb:UpdateItem"
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem"
     );
     table.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);
