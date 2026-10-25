@@ -213,7 +213,7 @@ describe("public calendar booking", () => {
     })).rejects.toMatchObject({ status: 400 });
   });
 
-  test("rejects invalid email and non-Dutch mobile numbers", async () => {
+  test("rejects invalid email and malformed phone numbers", async () => {
     const { dbService } = makeDb([available()]);
     await expect(createPublicBooking({
       dbService,
@@ -225,7 +225,7 @@ describe("public calendar booking", () => {
         time: "10:00",
         hairStyleId: "boho-braids",
         hairStyle: { style: "boho", size: "medium", length: "waist" },
-        client: { name: "Ada", email: "not-an-email", phone: "+44 7700 900123" },
+        client: { name: "Ada", email: "not-an-email", phone: "abc" },
       }),
     })).rejects.toMatchObject({ status: 400 });
   });
@@ -267,6 +267,26 @@ describe("public calendar booking", () => {
     });
     expect(Array.from(items.values())).toEqual(expect.arrayContaining([
       expect.objectContaining({ hairStyleName: "Crochet — Full Head", totalPrice: 50 }),
+    ]));
+  });
+
+  test("accepts international WhatsApp numbers and requires 8 or 10 Stitch Braids", async () => {
+    const { dbService, items } = makeDb([available()]);
+    await createPublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-24T12:00:00.000Z"),
+      body: JSON.stringify({
+        requestId: "44444444-4444-4444-8444-444444444444",
+        date: "2026-10-27",
+        time: "10:00",
+        hairStyleId: "stitch-braids",
+        hairStyle: { style: "stitch braids", size: "8" },
+        client: { name: "Ada", email: "ada@example.com", phone: "+44 7700 900123" },
+      }),
+    });
+    expect(Array.from(items.values())).toEqual(expect.arrayContaining([
+      expect.objectContaining({ clients: [expect.objectContaining({ phone: "+447700900123", hairStyle: expect.objectContaining({ size: "8" }) })] }),
     ]));
   });
 

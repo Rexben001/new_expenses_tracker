@@ -399,7 +399,8 @@ export class ExpensesBeStack extends cdk.Stack {
     calendarTable.grant(
       handlePublicBookingLambda,
       "dynamodb:Query",
-      "dynamodb:PutItem"
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem"
     );
     table.grantReadWriteData(handleCalendarLambda);
     howToTable.grantReadWriteData(handleHowToLambda);

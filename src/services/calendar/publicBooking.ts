@@ -51,7 +51,7 @@ const BookingRequestSchema = z.object({
   hairStyleId: z.string().min(1).max(80),
   hairStyle: z.object({
     style: z.string().trim().min(1).max(80),
-    size: z.enum(["smedium", "medium", "large"]).optional(),
+    size: z.enum(["smedium", "medium", "large", "8", "10"]).optional(),
     length: z.enum(["shoulder", "bra", "waist"]).optional(),
     additionalDetails: z.string().trim().max(500).optional(),
   }),
@@ -60,13 +60,13 @@ const BookingRequestSchema = z.object({
     name: z.string().trim().min(1).max(100),
     email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
     phone: z.string().trim().max(40)
-      .refine((value) => /^(?:\+31|0031|0)6\d{8}$/.test(value.replace(/[\s()-]/g, "")), {
-        message: "Enter a valid Dutch mobile WhatsApp number",
+      .refine((value) => /^\+?\d{7,15}$/.test(value.replace(/[\s()-]/g, "")), {
+        message: "Enter a valid WhatsApp phone number",
       })
       .transform((value) => {
         const compact = value.replace(/[\s()-]/g, "");
         if (compact.startsWith("06")) return `+31${compact.slice(1)}`;
-        if (compact.startsWith("0031")) return `+${compact.slice(2)}`;
+        if (compact.startsWith("00")) return `+${compact.slice(2)}`;
         return compact;
       }),
     notes: z.string().trim().max(1000).optional().default(""),
@@ -146,6 +146,12 @@ export async function createPublicBooking({
   }
   if (selectedStyle.pricing && (!request.hairStyle.size || !request.hairStyle.length)) {
     throw new HttpError("Size and length are required for this hair style", 400);
+  }
+  if (selectedStyle.pricing && !["smedium", "medium", "large"].includes(request.hairStyle.size ?? "")) {
+    throw new HttpError("Invalid size for this hair style", 400);
+  }
+  if (selectedStyle.id === "stitch-braids" && !["8", "10"].includes(request.hairStyle.size ?? "")) {
+    throw new HttpError("Choose 8 or 10 Stitch Braids", 400);
   }
   if (request.photos.some(({ key }) => !key.startsWith(`booking-photos/${request.requestId}/`))) {
     throw new HttpError("Invalid booking photo", 400);
