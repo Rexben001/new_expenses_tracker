@@ -46,7 +46,7 @@ function available(date = "2026-10-27") {
 }
 
 describe("public calendar booking", () => {
-  test("returns future available dates, open slots, and backend service catalog", async () => {
+  test("returns future available dates, open slots, hair styles, and extras", async () => {
     const { dbService } = makeDb([
       available(),
       {
@@ -68,7 +68,10 @@ describe("public calendar booking", () => {
     const result = body(response);
 
     expect(result.hairStyles).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "boho-braids", style: "boho" }),
+      expect.objectContaining({ id: "boho-braids", style: "boho", pricing: expect.any(Object) }),
+    ]));
+    expect(result.extras).toEqual(expect.arrayContaining([
+      { id: "curls-at-tip", name: "Curls at the tip", price: 5 },
     ]));
     expect(result.availability).toEqual(expect.arrayContaining([
       expect.objectContaining({ date: "2026-10-24" }),
@@ -94,10 +97,11 @@ describe("public calendar booking", () => {
         hairStyleId: "boho-braids",
         hairStyle: {
           style: "boho",
-          size: "small",
+          size: "smedium",
           length: "waist",
           additionalDetails: "Copper curls",
         },
+        extraId: "curls-at-tip",
         client: {
           name: "Ada Client",
           email: "ada@example.com",
@@ -120,10 +124,14 @@ describe("public calendar booking", () => {
           startTime: "10:00",
           hairStyle: {
             style: "boho",
-            size: "small",
+            size: "smedium",
             length: "waist",
             additionalDetails: "Copper curls",
           },
+          price: 95,
+          basePrice: 90,
+          extraName: "Curls at the tip",
+          extraPrice: 5,
         })],
       }),
     ]));
@@ -150,7 +158,7 @@ describe("public calendar booking", () => {
         date: "2026-10-27",
         time: "10:00",
         hairStyleId: "boho-braids",
-        hairStyle: { style: "boho", size: "small", length: "waist" },
+        hairStyle: { style: "boho", size: "smedium", length: "waist" },
         client: { name: "Ada", email: "ada@example.com", phone: "+31612345678" },
       }),
     })).rejects.toMatchObject({ status: 409 });
@@ -170,6 +178,60 @@ describe("public calendar booking", () => {
         client: { name: "Ada", email: "ada@example.com", phone: "+31612345678" },
       }),
     })).rejects.toMatchObject({ status: 400 });
+  });
+
+  test("rejects the removed small size", async () => {
+    const { dbService } = makeDb([available()]);
+    await expect(createPublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-24T12:00:00.000Z"),
+      body: JSON.stringify({
+        requestId: "11111111-1111-4111-8111-111111111111",
+        date: "2026-10-27",
+        time: "10:00",
+        hairStyleId: "boho-braids",
+        hairStyle: { style: "boho", size: "small", length: "waist" },
+        client: { name: "Ada", email: "ada@example.com", phone: "+31612345678" },
+      }),
+    })).rejects.toMatchObject({ status: 400 });
+  });
+
+  test("rejects invalid email and non-Dutch mobile numbers", async () => {
+    const { dbService } = makeDb([available()]);
+    await expect(createPublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-24T12:00:00.000Z"),
+      body: JSON.stringify({
+        requestId: "11111111-1111-4111-8111-111111111111",
+        date: "2026-10-27",
+        time: "10:00",
+        hairStyleId: "boho-braids",
+        hairStyle: { style: "boho", size: "medium", length: "waist" },
+        client: { name: "Ada", email: "not-an-email", phone: "+44 7700 900123" },
+      }),
+    })).rejects.toMatchObject({ status: 400 });
+  });
+
+  test("normalizes a Dutch mobile number for WhatsApp", async () => {
+    const { dbService, items } = makeDb([available()]);
+    await createPublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-24T12:00:00.000Z"),
+      body: JSON.stringify({
+        requestId: "11111111-1111-4111-8111-111111111111",
+        date: "2026-10-27",
+        time: "10:00",
+        hairStyleId: "boho-braids",
+        hairStyle: { style: "boho", size: "medium", length: "waist" },
+        client: { name: "Ada", email: "ADA@EXAMPLE.COM", phone: "06 1234 5678" },
+      }),
+    });
+    expect(Array.from(items.values())).toEqual(expect.arrayContaining([
+      expect.objectContaining({ clients: [expect.objectContaining({ email: "ada@example.com", phone: "+31612345678" })] }),
+    ]));
   });
 
   test("blocks slots before and after an appointment using both style durations", async () => {

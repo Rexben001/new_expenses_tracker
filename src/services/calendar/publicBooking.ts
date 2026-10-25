@@ -15,19 +15,34 @@ const HairStyleCardSchema = z.object({
   duration: z.number().int().positive().nullable(),
   price: z.number().nonnegative(),
   priceLabel: z.string(),
+  pricing: z.record(z.string(), z.record(z.string(), z.number().nonnegative())).optional(),
 });
 
 export type PublicHairStyle = z.infer<typeof HairStyleCardSchema>;
 
 export const publicHairStyles: PublicHairStyle[] = [
-  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 60, price: 45, priceLabel: "from €45" },
-  { id: "boho-braids", name: "Boho Braids", category: "Braids", style: "boho", duration: 120, price: 55, priceLabel: "from €55" },
+  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 60, price: 45, priceLabel: "from €45", pricing: {
+    large: { shoulder: 45, bra: 55, waist: 65 },
+    medium: { shoulder: 50, bra: 60, waist: 75 },
+    smedium: { shoulder: 55, bra: 65, waist: 80 },
+  } },
+  { id: "boho-braids", name: "Boho Braids", category: "Braids", style: "boho", duration: 120, price: 55, priceLabel: "from €55", pricing: {
+    large: { shoulder: 55, bra: 65, waist: 75 },
+    medium: { shoulder: 60, bra: 70, waist: 85 },
+    smedium: { shoulder: 65, bra: 75, waist: 90 },
+  } },
   { id: "crochet-full-head", name: "Crochet — Full Head", category: "Crochet", style: "crochet", duration: 200, price: 50, priceLabel: "€50" },
   { id: "crochet-360", name: "Crochet 360 (Single)", category: "Crochet", style: "crochet 360", duration: 240, price: 60, priceLabel: "€60" },
   { id: "sew-in-leave-out", name: "Sew-in Leave Out", category: "Weave", style: "sew-in leave out", duration: 360, price: 50, priceLabel: "€50" },
   { id: "jayda-wayda", name: "Jayda Wayda", category: "Style", style: "jayda wayda", duration: 120, price: 55, priceLabel: "€55" },
   { id: "stitch-braids", name: "Stitch Braids (8–10)", category: "Braids", style: "stitch braids", duration: 60, price: 40, priceLabel: "€40" },
 ];
+
+export const publicBookingExtras = [
+  { id: "curls-at-tip", name: "Curls at the tip", price: 5 },
+  { id: "blending-of-colors", name: "Blending of colors", price: 5 },
+  { id: "extra-length-below-waist", name: "Extra length below waist", price: 10 },
+] as const;
 
 const BookingRequestSchema = z.object({
   requestId: z.string().uuid(),
@@ -36,14 +51,24 @@ const BookingRequestSchema = z.object({
   hairStyleId: z.string().min(1).max(80),
   hairStyle: z.object({
     style: z.string().trim().min(1).max(80),
-    size: z.enum(["small", "smedium", "medium", "large"]),
-    length: z.string().trim().min(1).max(50),
+    size: z.enum(["smedium", "medium", "large"]),
+    length: z.enum(["shoulder", "bra", "waist"]),
     additionalDetails: z.string().trim().max(500).optional(),
   }),
+  extraId: z.enum(["curls-at-tip", "blending-of-colors", "extra-length-below-waist"]).optional(),
   client: z.object({
     name: z.string().trim().min(1).max(100),
-    email: z.string().trim().email().max(254),
-    phone: z.string().trim().min(5).max(40),
+    email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+    phone: z.string().trim().max(40)
+      .refine((value) => /^(?:\+31|0031|0)6\d{8}$/.test(value.replace(/[\s()-]/g, "")), {
+        message: "Enter a valid Dutch mobile WhatsApp number",
+      })
+      .transform((value) => {
+        const compact = value.replace(/[\s()-]/g, "");
+        if (compact.startsWith("06")) return `+31${compact.slice(1)}`;
+        if (compact.startsWith("0031")) return `+${compact.slice(2)}`;
+        return compact;
+      }),
     notes: z.string().trim().max(1000).optional().default(""),
   }),
   website: z.string().max(0).optional(),
@@ -78,6 +103,7 @@ export async function getPublicBookingAvailability({
   if (hairStyleId && !selectedStyle) throw new HttpError("Selected hair style is unavailable", 400);
   return successResponse({
     hairStyles: publicHairStyles,
+    extras: publicBookingExtras,
     availability: buildAvailability(entries, today, selectedStyle?.duration ?? 60),
   });
 }
@@ -98,6 +124,12 @@ export async function createPublicBooking({
   if (!selectedStyle || request.hairStyle.style !== selectedStyle.style) {
     throw new HttpError("Selected hair style is unavailable", 400);
   }
+  const selectedExtra = request.extraId
+    ? publicBookingExtras.find(({ id }) => id === request.extraId)
+    : undefined;
+  const basePrice = selectedStyle.pricing?.[request.hairStyle.size]?.[request.hairStyle.length]
+    ?? selectedStyle.price;
+  const totalPrice = basePrice + (selectedExtra?.price ?? 0);
 
   const entries = await getCalendarRecords(dbService, userId);
   const availability = buildAvailability(entries, now, selectedStyle.duration ?? 60);
@@ -123,7 +155,11 @@ export async function createPublicBooking({
       email: request.client.email,
       phone: request.client.phone,
       startTime: request.time,
-      price: selectedStyle.price,
+      price: totalPrice,
+      basePrice,
+      extraId: selectedExtra?.id,
+      extraName: selectedExtra?.name,
+      extraPrice: selectedExtra?.price,
       notes: request.client.notes || undefined,
       hairStyle: request.hairStyle,
     }],
@@ -131,6 +167,7 @@ export async function createPublicBooking({
     source: "prettybydollzzz-web",
     confirmationCode,
     hairStyleName: selectedStyle.name,
+    totalPrice,
     durationMinutes: selectedStyle.duration,
     createdAt: timestamp,
     updatedAt: timestamp,
