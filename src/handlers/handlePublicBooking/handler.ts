@@ -2,6 +2,7 @@ import type { APIGatewayEvent, Context } from "aws-lambda";
 import {
   createPublicBooking,
   getPublicBookingAvailability,
+  managePublicBooking,
 } from "../../services/calendar/publicBooking";
 import type { DbService } from "../../services/shared/dbService";
 import { HttpError } from "../../utils/http-error";
@@ -33,7 +34,23 @@ export const makeHandler = ({
     }
     if (event.httpMethod === "POST") {
       assertAllowedOrigin(event);
-      await enforceRateLimit(dbService, event.requestContext.identity?.sourceIp ?? "unknown");
+      const action = (() => {
+        try { return JSON.parse(event.body ?? "{}").action; } catch { return undefined; }
+      })();
+      const sourceIp = event.requestContext.identity?.sourceIp ?? "unknown";
+      await enforceRateLimit(
+        dbService,
+        sourceIp,
+        action === "details" ? "manage-details" : "booking-write",
+        action === "details" ? 5 : 60,
+      );
+      if (["details", "cancel", "reschedule"].includes(action)) {
+        return await managePublicBooking({
+          dbService,
+          userId: bookingUserId,
+          body: event.body ?? "",
+        });
+      }
       return await createPublicBooking({
         dbService,
         userId: bookingUserId,
@@ -58,20 +75,19 @@ function assertAllowedOrigin(event: APIGatewayEvent) {
   }
 }
 
-async function enforceRateLimit(dbService: DbService, sourceIp: string) {
-  const windowSeconds = 60;
+async function enforceRateLimit(dbService: DbService, sourceIp: string, scope: string, windowSeconds: number) {
   const now = Math.floor(Date.now() / 1000);
   const window = Math.floor(now / windowSeconds);
   const ipHash = createHash("sha256").update(sourceIp).digest("hex");
   try {
     await dbService.putItem({
       PK: `PUBLIC_BOOKING_RATE#${ipHash}`,
-      SK: `WINDOW#${window}`,
+      SK: `${scope.toUpperCase()}#WINDOW#${window}`,
       expiresAt: now + windowSeconds * 2,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
-      throw new HttpError("Too many booking attempts. Wait one minute and try again.", 429);
+      throw new HttpError(`Too many requests. Wait ${windowSeconds} seconds and try again.`, 429);
     }
     throw error;
   }

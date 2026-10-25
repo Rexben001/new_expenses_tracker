@@ -74,15 +74,30 @@ const BookingRequestSchema = z.object({
   website: z.string().max(0).optional(),
 });
 
+const ManageBookingRequestSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("details"), manageToken: z.string().uuid() }),
+  z.object({ action: z.literal("cancel"), manageToken: z.string().uuid() }),
+  z.object({
+    action: z.literal("reschedule"),
+    manageToken: z.string().uuid(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  }),
+]);
+
 type CalendarRecord = {
   id?: string;
   date?: string;
-  status?: "available" | "booked" | "unavailable";
+  status?: "available" | "booked" | "unavailable" | "cancelled" | "rescheduled";
   clients?: Array<{ startTime?: string; hairStyle?: { style?: string } }>;
   startTime?: string;
   endTime?: string;
   durationMinutes?: number;
   hairStyleName?: string;
+  manageToken?: string;
+  confirmationCode?: string;
+  PK?: string;
+  SK?: string;
 };
 
 export async function getPublicBookingAvailability({
@@ -140,6 +155,7 @@ export async function createPublicBooking({
 
   const id = slotId(userId, request.date, request.time);
   const confirmationCode = `PBD-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  const manageToken = randomUUID();
   const timestamp = now.toISOString();
   const item = {
     PK: createPk(userId),
@@ -166,6 +182,7 @@ export async function createPublicBooking({
     notes: `PrettybyDollzzz website booking ${confirmationCode}`,
     source: "prettybydollzzz-web",
     confirmationCode,
+    manageToken,
     hairStyleName: selectedStyle.name,
     totalPrice,
     durationMinutes: selectedStyle.duration,
@@ -186,6 +203,88 @@ export async function createPublicBooking({
     confirmationCode,
     booking: formatDbItem(item),
   }, 201);
+}
+
+export async function managePublicBooking({
+  dbService,
+  userId,
+  body,
+  now = new Date(),
+}: {
+  dbService: DbService;
+  userId: string;
+  body: string;
+  now?: Date;
+}) {
+  let request: z.infer<typeof ManageBookingRequestSchema>;
+  try {
+    request = ManageBookingRequestSchema.parse(JSON.parse(body));
+  } catch (error) {
+    throw new HttpError("Invalid booking management request", 400, { cause: error as Error });
+  }
+  const entries = await getCalendarRecords(dbService, userId);
+  const booking = entries.find((entry) => entry.manageToken === request.manageToken);
+  if (!booking || booking.status !== "booked" || !booking.PK || !booking.SK) {
+    throw new HttpError("This booking link is invalid or no longer active", 404);
+  }
+  const selectedStyle = publicHairStyles.find(({ name }) => name === booking.hairStyleName);
+  if (!selectedStyle) throw new HttpError("The booked hair style is no longer available", 409);
+
+  if (request.action === "details") {
+    return successResponse({
+      booking: {
+        confirmationCode: booking.confirmationCode,
+        hairStyleId: selectedStyle.id,
+        hairStyleName: selectedStyle.name,
+        date: booking.date,
+        time: booking.startTime,
+      },
+      availability: buildAvailability(entries, now, selectedStyle.duration ?? 60),
+    });
+  }
+
+  const timestamp = now.toISOString();
+  if (request.action === "cancel") {
+    await dbService.updateItem(
+      { PK: booking.PK, SK: booking.SK },
+      "SET #status = :status, updatedAt = :updatedAt REMOVE manageToken",
+      { "#status": "status" },
+      { ":status": "cancelled", ":updatedAt": timestamp },
+    );
+    return successResponse({ cancelled: true, confirmationCode: booking.confirmationCode });
+  }
+
+  const availability = buildAvailability(entries, now, selectedStyle.duration ?? 60);
+  const availableDate = availability.find(({ date }) => date === request.date);
+  if (!availableDate?.slots.includes(request.time)) {
+    throw new HttpError("This appointment is no longer available", 409);
+  }
+  const newId = slotId(userId, request.date, request.time);
+  const newConfirmationCode = `PBD-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  const nextBooking = {
+    ...booking,
+    SK: `CALENDAR#${newId}`,
+    id: newId,
+    date: request.date,
+    startTime: request.time,
+    confirmationCode: newConfirmationCode,
+    clients: (booking.clients ?? []).map((client) => ({ ...client, startTime: request.time })),
+    rescheduledFrom: booking.id,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await dbService.putItem(nextBooking);
+  await dbService.updateItem(
+    { PK: booking.PK, SK: booking.SK },
+    "SET #status = :status, rescheduledTo = :rescheduledTo, updatedAt = :updatedAt REMOVE manageToken",
+    { "#status": "status" },
+    { ":status": "rescheduled", ":rescheduledTo": newId, ":updatedAt": timestamp },
+  );
+  return successResponse({
+    rescheduled: true,
+    confirmationCode: newConfirmationCode,
+    booking: { date: request.date, time: request.time, hairStyleName: selectedStyle.name },
+  });
 }
 
 async function getCalendarRecords(dbService: DbService, userId: string) {
@@ -224,6 +323,7 @@ function buildAvailability(
     .map(([date, records]) => {
       const availableRecords = records.filter(({ status }) => status === "available");
       const bookedIntervals = records.flatMap((record) => {
+        if (record.status === "cancelled" || record.status === "rescheduled") return [];
         const entryStart = record.status === "booked" ? record.startTime : undefined;
         const entryDuration = record.durationMinutes ?? durationForStyle(record.hairStyleName) ?? durationForStyle(record.clients?.[0]?.hairStyle?.style) ?? 60;
         const entryInterval = entryStart

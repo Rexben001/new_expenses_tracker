@@ -2,6 +2,7 @@ import type { DbService } from "../src/services/shared/dbService";
 import {
   createPublicBooking,
   getPublicBookingAvailability,
+  managePublicBooking,
 } from "../src/services/calendar/publicBooking";
 
 const userId = "e2b5c4a4-1051-705e-8904-c843af6f3cbe";
@@ -20,7 +21,15 @@ function makeDb(initial: Record<string, any>[] = []) {
       items.set(key, item);
     }),
     queryItems: jest.fn(async () => Array.from(items.values())),
-    updateItem: jest.fn(),
+    updateItem: jest.fn(async (key, _expression, _names, values) => {
+      const item = items.get(`${key.PK}|${key.SK}`);
+      if (!item) throw new Error("missing");
+      item.status = values[":status"];
+      item.updatedAt = values[":updatedAt"];
+      if (values[":rescheduledTo"]) item.rescheduledTo = values[":rescheduledTo"];
+      delete item.manageToken;
+      return item;
+    }),
     deleteItem: jest.fn(),
     deleteItemsByPrefix: jest.fn(),
     scanItems: jest.fn(),
@@ -255,5 +264,39 @@ describe("public calendar booking", () => {
     expect(body(response).availability).toEqual(expect.arrayContaining([
       { date: "2026-10-31", slots: ["09:00", "15:00"] },
     ]));
+  });
+
+  test("loads and cancels a booking through its private management token", async () => {
+    const manageToken = "22222222-2222-4222-8222-222222222222";
+    const booking = {
+      PK: `USER#${userId}`,
+      SK: "CALENDAR#managed-booking",
+      id: "managed-booking",
+      date: "2026-10-31",
+      status: "booked",
+      startTime: "12:00",
+      hairStyleName: "Boho Braids",
+      durationMinutes: 120,
+      confirmationCode: "PBD-MANAGED1",
+      manageToken,
+      clients: [{ startTime: "12:00", hairStyle: { style: "boho" } }],
+    };
+    const { dbService, items } = makeDb([booking]);
+    const details = body(await managePublicBooking({
+      dbService, userId, now: new Date("2026-10-25T12:00:00.000Z"),
+      body: JSON.stringify({ action: "details", manageToken }),
+    }));
+    expect(details.booking).toEqual(expect.objectContaining({ confirmationCode: "PBD-MANAGED1", hairStyleId: "boho-braids" }));
+
+    const cancelled = body(await managePublicBooking({
+      dbService, userId, now: new Date("2026-10-25T12:00:00.000Z"),
+      body: JSON.stringify({ action: "cancel", manageToken }),
+    }));
+    expect(cancelled.cancelled).toBe(true);
+    expect(items.get(`${booking.PK}|${booking.SK}`)).toEqual(expect.objectContaining({ status: "cancelled" }));
+    await expect(managePublicBooking({
+      dbService, userId,
+      body: JSON.stringify({ action: "details", manageToken }),
+    })).rejects.toMatchObject({ status: 404 });
   });
 });

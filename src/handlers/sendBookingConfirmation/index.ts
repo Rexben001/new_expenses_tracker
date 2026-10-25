@@ -15,11 +15,20 @@ function detailRow(label: string, value: unknown) {
   return `<tr><td style="padding:10px 0;color:#7b1d67;font-size:13px;vertical-align:top;">${escapeHtml(label)}</td><td style="padding:10px 0;color:#3a143c;font-size:14px;font-weight:700;text-align:right;vertical-align:top;">${escapeHtml(value)}</td></tr>`;
 }
 
+function bookingManageUrls(entry: Record<string, any>) {
+  const manageBase = `${process.env.PUBLIC_SITE_URL ?? "https://prettybydollzzz.netlify.app/"}#manage=`;
+  return {
+    cancelUrl: `${manageBase}${encodeURIComponent(entry.manageToken)}&action=cancel`,
+    rescheduleUrl: `${manageBase}${encodeURIComponent(entry.manageToken)}&action=reschedule`,
+  };
+}
+
 function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any>, style: Record<string, any>) {
   const total = client.price !== undefined ? `€${client.price}` : "";
   const extra = client.extraName
     ? `${client.extraName}${client.extraPrice ? ` (+€${client.extraPrice})` : ""}`
     : "";
+  const { cancelUrl, rescheduleUrl } = bookingManageUrls(entry);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your appointment is booked</title></head>
 <body style="margin:0;padding:0;background:#fff3fa;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3a143c;">
@@ -56,6 +65,10 @@ function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any
         <h2 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:23px;font-weight:400;">Before your appointment</h2>
         <p style="margin:0;color:#5c285d;font-size:13px;line-height:1.7;">Please arrive with washed, fully detangled and completely dry hair. Do not apply oils, gels or leave-in products unless advised. Hair is not included. A €20 non-refundable deposit secures your appointment.</p>
       </td></tr>
+      <tr><td style="padding:0 34px 32px;background:#fff3fa;text-align:center;">
+        <a href="${escapeHtml(rescheduleUrl)}" style="display:inline-block;margin:4px;padding:12px 18px;background:#b32677;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;">Reschedule appointment</a>
+        <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;margin:4px;padding:11px 18px;border:1px solid #7b1d67;color:#7b1d67;text-decoration:none;font-size:13px;font-weight:700;">Cancel appointment</a>
+      </td></tr>
       <tr><td style="padding:24px 34px;background:#3a143c;color:#f8b8da;text-align:center;font-size:11px;line-height:1.6;">PrettybyDollzzz · Almere Poort<br><span style="color:#fff3fa;">I use Red One Wax for a neat, polished finish.</span></td></tr>
     </table>
   </td></tr></table>
@@ -71,6 +84,7 @@ export const handler: DynamoDBStreamHandler = async (event) => {
     const client = entry.clients?.[0];
     if (!client?.email) continue;
     const style = client.hairStyle ?? {};
+    const { cancelUrl, rescheduleUrl } = bookingManageUrls(entry);
     const subject = `PrettybyDollzzz booking ${entry.confirmationCode}`;
     const details = [
       `Booking reference: ${entry.confirmationCode}`,
@@ -113,7 +127,10 @@ export const handler: DynamoDBStreamHandler = async (event) => {
 
 ${details}
 
-Hair is not included.`,
+Hair is not included.
+
+Reschedule: ${rescheduleUrl}
+Cancel: ${cancelUrl}`,
       }),
     });
 
