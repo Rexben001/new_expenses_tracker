@@ -205,6 +205,7 @@ export async function createPublicBooking({
     totalPrice,
     photos: request.photos,
     durationMinutes: selectedStyle.duration,
+    expiresAt: bookingExpiry(request.date, request.time),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -289,6 +290,7 @@ export async function managePublicBooking({
     rescheduledFrom: booking.id,
     createdAt: timestamp,
     updatedAt: timestamp,
+    expiresAt: bookingExpiry(request.date, request.time),
   };
   await dbService.putItem(nextBooking);
   await dbService.updateItem(
@@ -328,6 +330,10 @@ function amsterdamAppointmentInstant(date: string, time: string) {
   if (!match) throw new Error("Could not determine Europe/Amsterdam offset");
   const offsetMinutes = (Number(match[2]) * 60 + Number(match[3])) * (match[1] === "+" ? 1 : -1);
   return new Date(wallClockAsUtc - offsetMinutes * 60 * 1000);
+}
+
+function bookingExpiry(date: string, time: string) {
+  return Math.floor(amsterdamAppointmentInstant(date, time).getTime() / 1000) + 730 * 24 * 60 * 60;
 }
 
 async function getCalendarRecords(dbService: DbService, userId: string) {
