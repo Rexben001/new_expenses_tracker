@@ -32,6 +32,8 @@ export interface DbService {
     expressionValues: Record<string, any>
   ): Promise<Record<string, any>[]>;
   incrementCounter?(key: Record<string, any>, initialValue: number): Promise<number>;
+  getItemOrUndefined?(key: Record<string, any>): Promise<Record<string, any> | undefined>;
+  consumeRateLimit?(key: Record<string, any>, limit: number, expiresAt: number): Promise<void>;
 }
 
 export function makeDbService(
@@ -55,6 +57,11 @@ export function makeDbService(
       return response.Item;
     },
 
+    async getItemOrUndefined(key: Record<string, any>) {
+      const response = await client.send(new GetCommand({ TableName: tableName, Key: key }));
+      return response.Item;
+    },
+
     async putItem(item: Record<string, any>) {
       const command = new PutItemCommand({
         TableName: tableName,
@@ -75,6 +82,17 @@ export function makeDbService(
         ReturnValues: "UPDATED_NEW",
       }));
       return Number(response.Attributes?.value);
+    },
+
+    async consumeRateLimit(key: Record<string, any>, limit: number, expiresAt: number) {
+      await client.send(new UpdateCommand({
+        TableName: tableName,
+        Key: key,
+        UpdateExpression: "SET #count = if_not_exists(#count, :zero) + :one, expiresAt = :expiresAt",
+        ConditionExpression: "attribute_not_exists(#count) OR #count < :limit",
+        ExpressionAttributeNames: { "#count": "count" },
+        ExpressionAttributeValues: { ":zero": 0, ":one": 1, ":limit": limit, ":expiresAt": expiresAt },
+      }));
     },
 
     async queryItems(

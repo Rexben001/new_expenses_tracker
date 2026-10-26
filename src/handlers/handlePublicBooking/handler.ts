@@ -47,7 +47,7 @@ export const makeHandler = ({
       const sourceIp = event.requestContext.identity?.sourceIp ?? "unknown";
       if (action === "create-photo-upload") {
         const input = parsePhotoUploadRequest(event.body ?? "");
-        await enforceRateLimit(dbService, sourceIp, `photo-upload-${input.kind}`, 5);
+        await consumeAttemptLimit(dbService, sourceIp, `photo-upload-${input.kind}`, 10, 300);
         if (!bookingImageBucket) throw new HttpError("Photo uploads are unavailable", 503);
         const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[input.contentType];
         const key = `booking-photos/${input.requestId}/${input.kind}-${randomUUID()}.${extension}`;
@@ -59,24 +59,30 @@ export const makeHandler = ({
         }), { expiresIn: 300 });
         return { statusCode: 200, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ key, uploadUrl }) };
       }
-      await enforceRateLimit(
-        dbService,
-        sourceIp,
-        action === "details" ? "manage-details" : "booking-write",
-        action === "details" ? 5 : 60,
-      );
       if (["details", "cancel", "reschedule"].includes(action)) {
-        return await managePublicBooking({
+        if (action === "details") {
+          await consumeAttemptLimit(dbService, sourceIp, "manage-details", 30, 300);
+          return await managePublicBooking({ dbService, userId: bookingUserId, body: event.body ?? "" });
+        }
+        await consumeAttemptLimit(dbService, sourceIp, "booking-write-attempts", 10, 300);
+        await assertNoSuccessCooldown(dbService, sourceIp);
+        const response = await managePublicBooking({
           dbService,
           userId: bookingUserId,
           body: event.body ?? "",
         });
+        await recordSuccessCooldown(dbService, sourceIp);
+        return response;
       }
-      return await createPublicBooking({
+      await consumeAttemptLimit(dbService, sourceIp, "booking-write-attempts", 10, 300);
+      await assertNoSuccessCooldown(dbService, sourceIp);
+      const response = await createPublicBooking({
         dbService,
         userId: bookingUserId,
         body: event.body ?? "",
       });
+      await recordSuccessCooldown(dbService, sourceIp);
+      return response;
     }
     throw new HttpError("Method not allowed", 405);
   } catch (error) {
@@ -111,19 +117,56 @@ function assertAllowedOrigin(event: APIGatewayEvent) {
   }
 }
 
-async function enforceRateLimit(dbService: DbService, sourceIp: string, scope: string, windowSeconds: number) {
+function rateLimitKey(sourceIp: string) {
+  return createHash("sha256").update(sourceIp).digest("hex");
+}
+
+async function consumeAttemptLimit(dbService: DbService, sourceIp: string, scope: string, limit: number, windowSeconds: number) {
   const now = Math.floor(Date.now() / 1000);
   const window = Math.floor(now / windowSeconds);
+  const key = { PK: `PUBLIC_BOOKING_RATE#${rateLimitKey(sourceIp)}`, SK: `${scope.toUpperCase()}#WINDOW#${window}` };
+  if (dbService.consumeRateLimit) {
+    try {
+      await dbService.consumeRateLimit(key, limit, (window + 1) * windowSeconds + 60);
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
+        throw new HttpError("Too many requests. Wait a few minutes and try again.", 429);
+      }
+      throw error;
+    }
+  }
+  await dbService.putItem({ ...key, expiresAt: (window + 1) * windowSeconds + 60 });
+}
+
+async function assertNoSuccessCooldown(dbService: DbService, sourceIp: string) {
+  if (!dbService.getItemOrUndefined) return;
+  const now = Math.floor(Date.now() / 1000);
+  const marker = await dbService.getItemOrUndefined({
+    PK: `PUBLIC_BOOKING_RATE#${rateLimitKey(sourceIp)}`,
+    SK: "BOOKING_WRITE_SUCCESS",
+  });
+  if (marker && Number(marker.expiresAt) > now) {
+    throw new HttpError("A booking change was already completed. Wait one minute and try again.", 429);
+  }
+}
+
+async function recordSuccessCooldown(dbService: DbService, sourceIp: string) {
   const ipHash = createHash("sha256").update(sourceIp).digest("hex");
+  const now = Math.floor(Date.now() / 1000);
+  const key = { PK: `PUBLIC_BOOKING_RATE#${ipHash}`, SK: "BOOKING_WRITE_SUCCESS" };
+  if (dbService.consumeRateLimit) {
+    await dbService.consumeRateLimit(key, Number.MAX_SAFE_INTEGER, now + 60);
+    return;
+  }
   try {
     await dbService.putItem({
-      PK: `PUBLIC_BOOKING_RATE#${ipHash}`,
-      SK: `${scope.toUpperCase()}#WINDOW#${window}`,
-      expiresAt: now + windowSeconds * 2,
+      ...key,
+      expiresAt: now + 60,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
-      throw new HttpError(`Too many requests. Wait ${windowSeconds} seconds and try again.`, 429);
+      throw new HttpError("A booking change was already completed. Wait one minute and try again.", 429);
     }
     throw error;
   }
