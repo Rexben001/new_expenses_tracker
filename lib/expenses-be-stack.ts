@@ -38,7 +38,7 @@ const ADMIN_EMAILS = [
   "dollyrexben@gmail.com",
   "tmgbolade.96@gmail.com",
 ].join(",");
-const BOOKING_OWNER_EMAIL = "dollyrexben@gmail.com";
+const BOOKING_OWNER_EMAIL = "prettybydollzzz@gmail.com";
 
 export class ExpensesBeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
