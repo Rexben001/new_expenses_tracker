@@ -86,7 +86,12 @@ describe("public calendar booking", () => {
     const result = body(response);
 
     expect(result.hairStyles).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "boho-braids", style: "boho", pricing: expect.any(Object) }),
+      expect.objectContaining({
+        id: "boho-braids",
+        style: "boho",
+        pricing: expect.objectContaining({ jumbo: { shoulder: 50, bra: 60, waist: 70 } }),
+        rowCounts: { smedium: 9, medium: 7, large: 6, jumbo: 4 },
+      }),
     ]));
     expect(result.extras).toEqual(expect.arrayContaining([
       { id: "curls-at-tip", name: "Curls at the tip", price: 5 },
@@ -110,8 +115,8 @@ describe("public calendar booking", () => {
       now: new Date("2026-10-24T12:00:00.000Z"),
       body: JSON.stringify({
         requestId: "11111111-1111-4111-8111-111111111111",
-        date: "2026-10-27",
-        time: "10:00",
+        date: "2026-10-25",
+        time: "09:00",
         hairStyleId: "boho-braids",
         hairStyle: {
           style: "boho",
@@ -134,12 +139,12 @@ describe("public calendar booking", () => {
     expect(result.confirmationCode).toBe("PBD-2026C45");
     expect(Array.from(items.values())).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        date: "2026-10-27",
+        date: "2026-10-25",
         status: "booked",
-        startTime: "10:00",
+        startTime: "09:00",
         clients: [expect.objectContaining({
           name: "Ada Client",
-          startTime: "10:00",
+          startTime: "09:00",
           hairStyle: {
             style: "boho",
             size: "smedium",
@@ -262,17 +267,17 @@ describe("public calendar booking", () => {
         requestId: "33333333-3333-4333-8333-333333333333",
         date: "2026-10-27",
         time: "10:00",
-        hairStyleId: "crochet-full-head",
+        hairStyleId: "crochet",
         hairStyle: { style: "crochet" },
         client: { name: "Ada", email: "ada@example.com", phone: "0612345678" },
       }),
     });
     expect(Array.from(items.values())).toEqual(expect.arrayContaining([
-      expect.objectContaining({ hairStyleName: "Crochet — Full Head", totalPrice: 50 }),
+      expect.objectContaining({ hairStyleName: "Crochet", totalPrice: 50, durationMinutes: 180 }),
     ]));
   });
 
-  test("accepts international WhatsApp numbers and requires 8 or 10 Stitch Braids", async () => {
+  test("accepts international WhatsApp numbers and requires 6, 8, or 10 Stitch Braids", async () => {
     const { dbService, items } = makeDb([available()]);
     await createPublicBooking({
       dbService,
@@ -307,11 +312,13 @@ describe("public calendar booking", () => {
       dbService,
       userId,
       hairStyleId: "boho-braids",
+      size: "jumbo",
+      length: "shoulder",
       today: new Date("2026-10-30T12:00:00.000Z"),
     });
 
     expect(body(response).availability).toEqual(expect.arrayContaining([
-      { date: "2026-10-31", slots: ["09:00", "15:00"] },
+      { date: "2026-10-31", slots: ["09:00"] },
     ]));
   });
 
@@ -330,7 +337,7 @@ describe("public calendar booking", () => {
       today: new Date("2026-10-30T12:00:00.000Z"),
     });
     const date = body(response).availability.find((item: any) => item.date === "2026-10-31");
-    expect(date?.slots).not.toContain("09:00");
+    expect(date?.slots ?? []).not.toContain("09:00");
   });
 
   test("loads and cancels a booking through its private management token", async () => {

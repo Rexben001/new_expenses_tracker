@@ -16,26 +16,35 @@ const HairStyleCardSchema = z.object({
   price: z.number().nonnegative(),
   priceLabel: z.string(),
   pricing: z.record(z.string(), z.record(z.string(), z.number().nonnegative())).optional(),
+  durationBySelection: z.record(z.string(), z.record(z.string(), z.number().int().positive())).optional(),
+  rowCounts: z.record(z.string(), z.number().int().positive()).optional(),
+  sizePricing: z.record(z.string(), z.number().nonnegative()).optional(),
 });
 
 export type PublicHairStyle = z.infer<typeof HairStyleCardSchema>;
 
 export const publicHairStyles: PublicHairStyle[] = [
-  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 60, price: 45, priceLabel: "from €45", pricing: {
+  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 480, price: 40, priceLabel: "from €40", rowCounts: { smedium: 9, medium: 7, large: 6, jumbo: 4 }, durationBySelection: {
+    jumbo: { shoulder: 120, bra: 180, waist: 210 }, large: { shoulder: 180, bra: 270, waist: 300 }, medium: { shoulder: 300, bra: 360, waist: 420 }, smedium: { shoulder: 360, bra: 420, waist: 480 },
+  }, pricing: {
+    jumbo: { shoulder: 40, bra: 50, waist: 60 },
     large: { shoulder: 45, bra: 55, waist: 65 },
     medium: { shoulder: 50, bra: 60, waist: 75 },
     smedium: { shoulder: 55, bra: 65, waist: 80 },
   } },
-  { id: "boho-braids", name: "Boho Braids", category: "Braids", style: "boho", duration: 120, price: 55, priceLabel: "from €55", pricing: {
+  { id: "boho-braids", name: "Boho Braids", category: "Braids", style: "boho", duration: 510, price: 50, priceLabel: "from €50", rowCounts: { smedium: 9, medium: 7, large: 6, jumbo: 4 }, durationBySelection: {
+    jumbo: { shoulder: 150, bra: 210, waist: 240 }, large: { shoulder: 210, bra: 300, waist: 330 }, medium: { shoulder: 330, bra: 390, waist: 450 }, smedium: { shoulder: 390, bra: 450, waist: 510 },
+  }, pricing: {
+    jumbo: { shoulder: 50, bra: 60, waist: 70 },
     large: { shoulder: 55, bra: 65, waist: 75 },
     medium: { shoulder: 60, bra: 70, waist: 85 },
     smedium: { shoulder: 65, bra: 75, waist: 90 },
   } },
-  { id: "crochet-full-head", name: "Crochet — Full Head", category: "Crochet", style: "crochet", duration: 200, price: 50, priceLabel: "€50" },
-  { id: "crochet-360", name: "Crochet 360 (Single)", category: "Crochet", style: "crochet 360", duration: 240, price: 60, priceLabel: "€60" },
-  { id: "sew-in-leave-out", name: "Sew-in Leave Out", category: "Weave", style: "sew-in leave out", duration: 360, price: 50, priceLabel: "€50" },
-  { id: "jayda-wayda", name: "Jayda Wayda", category: "Style", style: "jayda wayda", duration: 120, price: 55, priceLabel: "€55" },
-  { id: "stitch-braids", name: "Stitch Braids (8–10)", category: "Braids", style: "stitch braids", duration: 60, price: 40, priceLabel: "€40" },
+  { id: "crochet", name: "Crochet", category: "Crochet", style: "crochet", duration: 180, price: 50, priceLabel: "€50" },
+  { id: "sew-in-leave-out", name: "Sew-in — Leave Out", category: "Weave", style: "sew-in leave out", duration: 180, price: 50, priceLabel: "€50" },
+  { id: "sew-in-flip-over", name: "Sew-in — Flip Over", category: "Weave", style: "sew-in flip over", duration: 180, price: 50, priceLabel: "€50" },
+  { id: "jayda-wayda", name: "Jayda Wayda", category: "Style", style: "jayda wayda", duration: 180, price: 55, priceLabel: "€55" },
+  { id: "stitch-braids", name: "Stitch Braids (6–10)", category: "Braids", style: "stitch braids", duration: 120, price: 30, priceLabel: "from €30", sizePricing: { "6": 30, "8": 40, "10": 40 } },
 ];
 
 export const publicBookingExtras = [
@@ -51,7 +60,7 @@ const BookingRequestSchema = z.object({
   hairStyleId: z.string().min(1).max(80),
   hairStyle: z.object({
     style: z.string().trim().min(1).max(80),
-    size: z.enum(["smedium", "medium", "large", "8", "10"]).optional(),
+    size: z.enum(["smedium", "medium", "large", "jumbo", "6", "8", "10"]).optional(),
     length: z.enum(["shoulder", "bra", "waist"]).optional(),
     additionalDetails: z.string().trim().max(500).optional(),
   }),
@@ -109,11 +118,15 @@ export async function getPublicBookingAvailability({
   dbService,
   userId,
   hairStyleId,
+  size,
+  length,
   today = new Date(),
 }: {
   dbService: DbService;
   userId: string;
   hairStyleId?: string;
+  size?: string;
+  length?: string;
   today?: Date;
 }) {
   const entries = await getCalendarRecords(dbService, userId);
@@ -124,7 +137,7 @@ export async function getPublicBookingAvailability({
   return successResponse({
     hairStyles: publicHairStyles,
     extras: publicBookingExtras,
-    availability: buildAvailability(entries, today, selectedStyle?.duration ?? 60),
+    availability: buildAvailability(entries, today, durationForSelection(selectedStyle, size, length) ?? selectedStyle?.duration ?? 60),
   });
 }
 
@@ -147,11 +160,11 @@ export async function createPublicBooking({
   if (selectedStyle.pricing && (!request.hairStyle.size || !request.hairStyle.length)) {
     throw new HttpError("Size and length are required for this hair style", 400);
   }
-  if (selectedStyle.pricing && !["smedium", "medium", "large"].includes(request.hairStyle.size ?? "")) {
+  if (selectedStyle.pricing && !["smedium", "medium", "large", "jumbo"].includes(request.hairStyle.size ?? "")) {
     throw new HttpError("Invalid size for this hair style", 400);
   }
-  if (selectedStyle.id === "stitch-braids" && !["8", "10"].includes(request.hairStyle.size ?? "")) {
-    throw new HttpError("Choose 8 or 10 Stitch Braids", 400);
+  if (selectedStyle.id === "stitch-braids" && !["6", "8", "10"].includes(request.hairStyle.size ?? "")) {
+    throw new HttpError("Choose 6, 8, or 10 Stitch Braids", 400);
   }
   if (request.photos.some(({ key }) => !key.startsWith(`booking-photos/${request.requestId}/`))) {
     throw new HttpError("Invalid booking photo", 400);
@@ -159,13 +172,14 @@ export async function createPublicBooking({
   const selectedExtra = request.extraId
     ? publicBookingExtras.find(({ id }) => id === request.extraId)
     : undefined;
-  const basePrice = request.hairStyle.size && request.hairStyle.length
+  const basePrice = selectedStyle.sizePricing?.[request.hairStyle.size ?? ""] ?? (request.hairStyle.size && request.hairStyle.length
     ? selectedStyle.pricing?.[request.hairStyle.size]?.[request.hairStyle.length] ?? selectedStyle.price
-    : selectedStyle.price;
+    : selectedStyle.price);
   const totalPrice = basePrice + (selectedExtra?.price ?? 0);
 
   const entries = await getCalendarRecords(dbService, userId);
-  const availability = buildAvailability(entries, now, selectedStyle.duration ?? 60);
+  const appointmentDuration = durationForSelection(selectedStyle, request.hairStyle.size, request.hairStyle.length) ?? selectedStyle.duration ?? 60;
+  const availability = buildAvailability(entries, now, appointmentDuration);
   const date = availability.find((item) => item.date === request.date);
   if (!date?.slots.includes(request.time)) {
     throw new HttpError("This appointment is no longer available", 409);
@@ -204,7 +218,7 @@ export async function createPublicBooking({
     hairStyleName: selectedStyle.name,
     totalPrice,
     photos: request.photos,
-    durationMinutes: selectedStyle.duration,
+    durationMinutes: appointmentDuration,
     expiresAt: bookingExpiry(request.date, request.time),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -261,7 +275,7 @@ export async function managePublicBooking({
         time: booking.startTime,
         canModify,
       },
-      availability: buildAvailability(entries, now, selectedStyle.duration ?? 60),
+      availability: buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60),
     });
   }
 
@@ -272,7 +286,7 @@ export async function managePublicBooking({
     return successResponse({ cancelled: true, confirmationCode: booking.confirmationCode });
   }
 
-  const availability = buildAvailability(entries, now, selectedStyle.duration ?? 60);
+  const availability = buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60);
   const availableDate = availability.find(({ date }) => date === request.date);
   if (!availableDate?.slots.includes(request.time)) {
     throw new HttpError("This appointment is no longer available", 409);
@@ -415,6 +429,11 @@ function durationForStyle(style?: string) {
   if (!style) return undefined;
   const normalized = style.trim().toLowerCase();
   return publicHairStyles.find((item) => item.style.toLowerCase() === normalized || item.name.toLowerCase() === normalized)?.duration ?? undefined;
+}
+
+function durationForSelection(style?: PublicHairStyle, size?: string, length?: string) {
+  if (!style || !size || !length) return undefined;
+  return style.durationBySelection?.[size]?.[length];
 }
 
 async function nextConfirmationCode(dbService: DbService, userId: string, appointmentDate: string) {

@@ -37,6 +37,8 @@ export const makeHandler = ({
         dbService,
         userId: bookingUserId,
         hairStyleId: event.queryStringParameters?.hairStyleId,
+        size: event.queryStringParameters?.size,
+        length: event.queryStringParameters?.length,
       });
     }
     if (event.httpMethod === "POST") {
