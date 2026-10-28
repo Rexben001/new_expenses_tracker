@@ -323,7 +323,7 @@ describe("public calendar booking", () => {
   });
 
   test("uses an available entry's start time and offers hourly starts through 18:00", async () => {
-    const { dbService } = makeDb([{ ...available("2026-10-31"), startTime: "14:00" }]);
+    const { dbService } = makeDb([{ ...available("2026-10-31"), startTime: "14:00", endTime: "" }]);
     const response = await getPublicBookingAvailability({
       dbService,
       userId,

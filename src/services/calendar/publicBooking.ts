@@ -421,8 +421,8 @@ function buildAvailability(
         if (bookedIntervals.some((booked) => start < booked.end && end > booked.start)) return false;
         if (!windows.length) return start <= timeToMinutes("18:00");
         return windows.some((window) => {
-          const windowStart = timeToMinutes(window.startTime ?? "08:00");
-          const windowEnd = timeToMinutes(window.endTime ?? "18:00");
+          const windowStart = timeToMinutes(window.startTime || "08:00");
+          const windowEnd = timeToMinutes(window.endTime || "18:00");
           return start >= windowStart && start <= windowEnd;
         });
       });
