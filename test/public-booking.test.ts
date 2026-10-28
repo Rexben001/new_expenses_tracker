@@ -99,7 +99,7 @@ describe("public calendar booking", () => {
     expect(result.availability).toEqual(expect.arrayContaining([
       expect.objectContaining({ date: "2026-10-24" }),
       expect.objectContaining({ date: "2026-10-25" }),
-      { date: "2026-10-27", slots: ["10:00", "15:00", "16:30"] },
+      { date: "2026-10-27", slots: ["08:00", "09:00", "10:00", "14:00", "15:00", "16:00", "17:00", "18:00"] },
     ]));
     expect(result.availability).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ date: "2027-01-25" }),
@@ -318,8 +318,44 @@ describe("public calendar booking", () => {
     });
 
     expect(body(response).availability).toEqual(expect.arrayContaining([
-      { date: "2026-10-31", slots: ["08:00"] },
+      { date: "2026-10-31", slots: ["08:00", "09:00"] },
     ]));
+  });
+
+  test("uses an available entry's start time and offers hourly starts through 18:00", async () => {
+    const { dbService } = makeDb([{ ...available("2026-10-31"), startTime: "14:00" }]);
+    const response = await getPublicBookingAvailability({
+      dbService,
+      userId,
+      hairStyleId: "crochet",
+      today: new Date("2026-10-30T12:00:00.000Z"),
+    });
+    const date = body(response).availability.find((item: any) => item.date === "2026-10-31");
+    expect(date.slots).toEqual(["14:00", "15:00", "16:00", "17:00", "18:00"]);
+  });
+
+  test("limits waist-length Smedium to mornings and excludes 18:00 for waist-length Medium", async () => {
+    const { dbService } = makeDb([available("2026-10-31")]);
+    const smedium = body(await getPublicBookingAvailability({
+      dbService,
+      userId,
+      hairStyleId: "knotless-styles",
+      size: "smedium",
+      length: "waist",
+      today: new Date("2026-10-30T12:00:00.000Z"),
+    })).availability.find((item: any) => item.date === "2026-10-31");
+    const medium = body(await getPublicBookingAvailability({
+      dbService,
+      userId,
+      hairStyleId: "knotless-styles",
+      size: "medium",
+      length: "waist",
+      today: new Date("2026-10-30T12:00:00.000Z"),
+    })).availability.find((item: any) => item.date === "2026-10-31");
+
+    expect(smedium.slots).toEqual(["08:00", "09:00", "10:00", "11:00"]);
+    expect(medium.slots).toContain("17:00");
+    expect(medium.slots).not.toContain("18:00");
   });
 
   test("blocks 09:00 after a legacy 08:00 appointment with missing duration", async () => {

@@ -249,6 +249,7 @@ export class ExpensesBeStack extends cdk.Stack {
         runtime: lambdaRuntime,
         entry: path.join(__dirname, "../src/handlers/sendBookingConfirmation/index.ts"),
         handler: "handler",
+        timeout: cdk.Duration.minutes(1),
         environment: {
           ...lambdaEnvironment,
           BOOKING_EMAIL_FROM: BOOKING_OWNER_EMAIL,

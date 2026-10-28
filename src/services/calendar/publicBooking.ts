@@ -103,7 +103,7 @@ type CalendarRecord = {
   id?: string;
   date?: string;
   status?: "available" | "booked" | "unavailable" | "cancelled" | "rescheduled";
-  clients?: Array<{ startTime?: string; hairStyle?: { style?: string } }>;
+  clients?: Array<{ startTime?: string; hairStyle?: { style?: string; size?: string; length?: string } }>;
   startTime?: string;
   endTime?: string;
   durationMinutes?: number;
@@ -137,7 +137,12 @@ export async function getPublicBookingAvailability({
   return successResponse({
     hairStyles: publicHairStyles,
     extras: publicBookingExtras,
-    availability: buildAvailability(entries, today, durationForSelection(selectedStyle, size, length) ?? selectedStyle?.duration ?? 60),
+    availability: buildAvailability(
+      entries,
+      today,
+      durationForSelection(selectedStyle, size, length) ?? selectedStyle?.duration ?? 60,
+      { size, length },
+    ),
   });
 }
 
@@ -179,7 +184,10 @@ export async function createPublicBooking({
 
   const entries = await getCalendarRecords(dbService, userId);
   const appointmentDuration = durationForSelection(selectedStyle, request.hairStyle.size, request.hairStyle.length) ?? selectedStyle.duration ?? 60;
-  const availability = buildAvailability(entries, now, appointmentDuration);
+  const availability = buildAvailability(entries, now, appointmentDuration, {
+    size: request.hairStyle.size,
+    length: request.hairStyle.length,
+  });
   const date = availability.find((item) => item.date === request.date);
   if (!date?.slots.includes(request.time)) {
     throw new HttpError("This appointment is no longer available", 409);
@@ -263,6 +271,7 @@ export async function managePublicBooking({
   }
   const selectedStyle = publicHairStyles.find(({ name }) => name === booking.hairStyleName);
   if (!selectedStyle) throw new HttpError("The booked hair style is no longer available", 409);
+  const bookedSelection = booking.clients?.[0]?.hairStyle;
 
   if (request.action === "details") {
     const canModify = isOutsideChangeWindow(booking, now);
@@ -275,7 +284,7 @@ export async function managePublicBooking({
         time: booking.startTime,
         canModify,
       },
-      availability: buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60),
+      availability: buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60, bookedSelection),
     });
   }
 
@@ -286,7 +295,7 @@ export async function managePublicBooking({
     return successResponse({ cancelled: true, confirmationCode: booking.confirmationCode });
   }
 
-  const availability = buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60);
+  const availability = buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60, bookedSelection);
   const availableDate = availability.find(({ date }) => date === request.date);
   if (!availableDate?.slots.includes(request.time)) {
     throw new HttpError("This appointment is no longer available", 409);
@@ -361,6 +370,7 @@ function buildAvailability(
   entries: CalendarRecord[],
   today = new Date(),
   requestedDuration = 60,
+  selection: { size?: string; length?: string } = {},
 ) {
   const from = toAmsterdamDateKey(today);
   const to = toDateKey(addMonths(new Date(`${from}T12:00:00.000Z`), 2));
@@ -403,13 +413,15 @@ function buildAvailability(
       const windows = availableRecords.filter((record) => record.startTime || record.endTime);
       const slots = defaultSlots(date).filter((slot) => {
         const start = timeToMinutes(slot);
+        if (selection.length === "waist" && selection.size === "smedium" && start >= timeToMinutes("12:00")) return false;
+        if (selection.length === "waist" && selection.size === "medium" && start >= timeToMinutes("18:00")) return false;
         const end = start + requestedDuration;
         if (bookedIntervals.some((booked) => start < booked.end && end > booked.start)) return false;
-        if (!windows.length) return end <= timeToMinutes("18:00");
+        if (!windows.length) return start <= timeToMinutes("18:00");
         return windows.some((window) => {
-          const windowStart = timeToMinutes(window.startTime ?? "00:00");
-          const windowEnd = timeToMinutes(window.endTime ?? "23:59");
-          return start >= windowStart && end <= windowEnd;
+          const windowStart = timeToMinutes(window.startTime ?? "08:00");
+          const windowEnd = timeToMinutes(window.endTime ?? "18:00");
+          return start >= windowStart && start <= windowEnd;
         });
       });
       return { date, slots };
@@ -418,11 +430,8 @@ function buildAvailability(
     .sort((left, right) => left.date.localeCompare(right.date));
 }
 
-function defaultSlots(date: string) {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  if (day === 6) return ["08:00", "10:30", "12:00", "13:30", "15:00"];
-  if (day === 2 || day === 4) return ["10:00", "11:30", "13:00", "15:00", "16:30", "18:00"];
-  return ["08:00", "10:30", "12:00", "14:00", "15:30", "17:00"];
+function defaultSlots(_date: string) {
+  return ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 }
 
 function durationForStyle(style?: string) {
