@@ -110,6 +110,7 @@ type CalendarRecord = {
   hairStyleName?: string;
   manageToken?: string;
   confirmationCode?: string;
+  updatedAt?: string;
   PK?: string;
   SK?: string;
 };
@@ -389,12 +390,13 @@ function buildAvailability(
   }
 
   return Array.from(dates.entries())
-    .filter(([date, records]) =>
-      (isWeekend(date) || records.some(({ status }) => status === "available")) &&
-      !records.some(({ status }) => status === "unavailable")
-    )
+    .filter(([date, records]) => {
+      const availability = latestAvailabilityRecord(records);
+      return availability ? availability.status === "available" : isWeekend(date);
+    })
     .map(([date, records]) => {
-      const availableRecords = records.filter(({ status }) => status === "available");
+      const latestAvailability = latestAvailabilityRecord(records);
+      const availableRecords = latestAvailability?.status === "available" ? [latestAvailability] : [];
       const bookedIntervals = records.flatMap((record) => {
         if (record.status === "cancelled" || record.status === "rescheduled") return [];
         const entryStart = record.status === "booked" ? record.startTime : undefined;
@@ -428,6 +430,12 @@ function buildAvailability(
     })
     .filter(({ slots }) => slots.length > 0)
     .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function latestAvailabilityRecord(records: CalendarRecord[]) {
+  return records
+    .filter(({ status }) => status === "available" || status === "unavailable")
+    .sort((left, right) => (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""))[0];
 }
 
 function defaultSlots(_date: string) {

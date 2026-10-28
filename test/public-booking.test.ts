@@ -334,6 +334,23 @@ describe("public calendar booking", () => {
     expect(date.slots).toEqual(["14:00", "15:00", "16:00", "17:00", "18:00"]);
   });
 
+  test("uses the newest availability setting when an older unavailable record remains", async () => {
+    const date = "2026-10-31";
+    const { dbService } = makeDb([
+      { ...available(date), SK: "CALENDAR#old-unavailable", status: "unavailable", updatedAt: "2026-10-20T09:00:00.000Z" },
+      { ...available(date), SK: "CALENDAR#new-available", startTime: "15:00", updatedAt: "2026-10-28T09:00:00.000Z" },
+    ]);
+    const response = await getPublicBookingAvailability({
+      dbService,
+      userId,
+      hairStyleId: "crochet",
+      today: new Date("2026-10-30T12:00:00.000Z"),
+    });
+
+    expect(body(response).availability.find((item: any) => item.date === date)?.slots)
+      .toEqual(["15:00", "16:00", "17:00", "18:00"]);
+  });
+
   test("limits waist-length Smedium to mornings and excludes 18:00 for waist-length Medium", async () => {
     const { dbService } = makeDb([available("2026-10-31")]);
     const smedium = body(await getPublicBookingAvailability({
