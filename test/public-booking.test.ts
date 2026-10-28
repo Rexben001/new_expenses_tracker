@@ -116,7 +116,7 @@ describe("public calendar booking", () => {
       body: JSON.stringify({
         requestId: "11111111-1111-4111-8111-111111111111",
         date: "2026-10-25",
-        time: "09:00",
+        time: "08:00",
         hairStyleId: "boho-braids",
         hairStyle: {
           style: "boho",
@@ -141,10 +141,10 @@ describe("public calendar booking", () => {
       expect.objectContaining({
         date: "2026-10-25",
         status: "booked",
-        startTime: "09:00",
+        startTime: "08:00",
         clients: [expect.objectContaining({
           name: "Ada Client",
-          startTime: "09:00",
+          startTime: "08:00",
           hairStyle: {
             style: "boho",
             size: "smedium",
@@ -318,7 +318,7 @@ describe("public calendar booking", () => {
     });
 
     expect(body(response).availability).toEqual(expect.arrayContaining([
-      { date: "2026-10-31", slots: ["09:00"] },
+      { date: "2026-10-31", slots: ["08:00"] },
     ]));
   });
 

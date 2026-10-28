@@ -420,9 +420,9 @@ function buildAvailability(
 
 function defaultSlots(date: string) {
   const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  if (day === 6) return ["09:00", "10:30", "12:00", "13:30", "15:00"];
+  if (day === 6) return ["08:00", "10:30", "12:00", "13:30", "15:00"];
   if (day === 2 || day === 4) return ["10:00", "11:30", "13:00", "15:00", "16:30", "18:00"];
-  return ["09:00", "10:30", "12:00", "14:00", "15:30", "17:00"];
+  return ["08:00", "10:30", "12:00", "14:00", "15:30", "17:00"];
 }
 
 function durationForStyle(style?: string) {
