@@ -363,7 +363,7 @@ function buildAvailability(
   requestedDuration = 60,
 ) {
   const from = toAmsterdamDateKey(today);
-  const to = toDateKey(addMonths(new Date(`${from}T12:00:00.000Z`), 3));
+  const to = toDateKey(addMonths(new Date(`${from}T12:00:00.000Z`), 2));
   const dates = new Map<string, CalendarRecord[]>();
   const cursor = new Date(`${from}T12:00:00.000Z`);
   const finalDate = new Date(`${to}T12:00:00.000Z`);
