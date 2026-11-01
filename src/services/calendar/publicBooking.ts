@@ -19,6 +19,7 @@ const HairStyleCardSchema = z.object({
   durationBySelection: z.record(z.string(), z.record(z.string(), z.number().int().positive())).optional(),
   rowCounts: z.record(z.string(), z.number().int().positive()).optional(),
   sizePricing: z.record(z.string(), z.number().nonnegative()).optional(),
+  styleOptions: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
 });
 
 export type PublicHairStyle = z.infer<typeof HairStyleCardSchema>;
@@ -70,7 +71,12 @@ export const publicBookingRules = {
 } as const;
 
 export const publicHairStyles: PublicHairStyle[] = [
-  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 480, price: 40, priceLabel: "from €40", rowCounts: { smedium: 9, medium: 7, large: 6, jumbo: 4 }, durationBySelection: {
+  { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", styleOptions: [
+    { value: "knotless", label: "Knotless" },
+    { value: "french curl", label: "French Curl" },
+    { value: "kinky", label: "Kinky" },
+    { value: "marly", label: "Marly" },
+  ], duration: 480, price: 40, priceLabel: "from €40", rowCounts: { smedium: 9, medium: 7, large: 6, jumbo: 4 }, durationBySelection: {
     jumbo: { shoulder: 120, bra: 180, waist: 210 }, large: { shoulder: 180, bra: 270, waist: 300 }, medium: { shoulder: 300, bra: 360, waist: 420 }, smedium: { shoulder: 360, bra: 420, waist: 480 },
   }, pricing: {
     jumbo: { shoulder: 40, bra: 50, waist: 60 },
@@ -213,7 +219,8 @@ export async function createPublicBooking({
 }) {
   const request = parseBookingRequest(body);
   const selectedStyle = publicHairStyles.find(({ id }) => id === request.hairStyleId);
-  if (!selectedStyle || request.hairStyle.style !== selectedStyle.style) {
+  const allowedActualStyles = selectedStyle?.styleOptions?.map(({ value }) => value) ?? (selectedStyle ? [selectedStyle.style] : []);
+  if (!selectedStyle || !allowedActualStyles.includes(request.hairStyle.style)) {
     throw new HttpError("Selected hair style is unavailable", 400);
   }
   if (selectedStyle.pricing && (!request.hairStyle.size || !request.hairStyle.length)) {

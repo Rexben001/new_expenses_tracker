@@ -31,7 +31,7 @@ function bookingManageUrls(entry: Record<string, any>) {
 
 function feedbackUrl(entry: Record<string, any>) {
   const base = process.env.PUBLIC_SITE_URL ?? "https://prettybydollzzz.netlify.app/";
-  return `${base}#feedback=${encodeURIComponent(entry.manageToken)}`;
+  return `${base}?feedback=${encodeURIComponent(entry.manageToken)}#feedback`;
 }
 
 function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any>, style: Record<string, any>) {

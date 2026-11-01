@@ -278,6 +278,27 @@ describe("public calendar booking", () => {
     ]));
   });
 
+  test("stores the actual style selected from the combined Knotless card", async () => {
+    const { dbService, items } = makeDb([available()]);
+    await createPublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-24T12:00:00.000Z"),
+      body: JSON.stringify({
+        requestId: "77777777-7777-4777-8777-777777777777",
+        date: "2026-10-27",
+        time: "10:00",
+        hairStyleId: "knotless-styles",
+        hairStyle: { style: "french curl", size: "jumbo", length: "shoulder" },
+        client: { name: "Ada", email: "ada@example.com", phone: "+31612345678" },
+      }),
+    });
+
+    expect(Array.from(items.values())).toEqual(expect.arrayContaining([
+      expect.objectContaining({ clients: [expect.objectContaining({ hairStyle: expect.objectContaining({ style: "french curl" }) })] }),
+    ]));
+  });
+
   test("accepts international WhatsApp numbers and requires 6, 8, or 10 Stitch Braids", async () => {
     const { dbService, items } = makeDb([available()]);
     await createPublicBooking({
