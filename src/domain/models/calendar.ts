@@ -67,6 +67,7 @@ export const CalendarEntrySchema = z.object({
   updatedAt: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Date must be a valid date string",
   }),
+  completedAt: z.string().optional(),
 });
 export type CalendarEntry = z.infer<typeof CalendarEntrySchema>;
 
@@ -81,6 +82,7 @@ export const CalendarEntryRequestSchema = z.object({
   subAccountId: z.any().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  completedAt: z.string().optional(),
 });
 export type CalendarEntryRequest = z.infer<typeof CalendarEntryRequestSchema>;
 
@@ -95,6 +97,7 @@ export const CalendarEntryUpdateRequestSchema = z.object({
   subAccountId: z.any().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  completedAt: z.string().optional(),
 });
 export type CalendarEntryUpdateRequest = z.infer<
   typeof CalendarEntryUpdateRequestSchema

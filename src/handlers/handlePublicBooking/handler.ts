@@ -13,6 +13,25 @@ import { randomUUID } from "node:crypto";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+export const publicBookingSecurityRules = {
+  uploads: {
+    allowedKinds: ["style", "hair"],
+    allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
+    maximumBytes: 2 * 1024 * 1024,
+    maximumFileNameCharacters: 150,
+    signedUrlLifetimeSeconds: 300,
+    attemptsPerWindow: 10,
+    attemptWindowSeconds: 300,
+  },
+  rateLimits: {
+    managementReadsPerWindow: 30,
+    bookingWritesPerWindow: 10,
+    windowSeconds: 300,
+    successfulWriteCooldownSeconds: 60,
+    recordExpiryBufferSeconds: 60,
+  },
+} as const;
+
 export const makeHandler = ({
   dbService,
   bookingUserId,
@@ -49,7 +68,13 @@ export const makeHandler = ({
       const sourceIp = event.requestContext.identity?.sourceIp ?? "unknown";
       if (action === "create-photo-upload") {
         const input = parsePhotoUploadRequest(event.body ?? "");
-        await consumeAttemptLimit(dbService, sourceIp, `photo-upload-${input.kind}`, 10, 300);
+        await consumeAttemptLimit(
+          dbService,
+          sourceIp,
+          `photo-upload-${input.kind}`,
+          publicBookingSecurityRules.uploads.attemptsPerWindow,
+          publicBookingSecurityRules.uploads.attemptWindowSeconds,
+        );
         if (!bookingImageBucket) throw new HttpError("Photo uploads are unavailable", 503);
         const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[input.contentType];
         const key = `booking-photos/${input.requestId}/${input.kind}-${randomUUID()}.${extension}`;
@@ -58,15 +83,37 @@ export const makeHandler = ({
           Key: key,
           ContentType: input.contentType,
           ContentLength: input.size,
-        }), { expiresIn: 300 });
+        }), { expiresIn: publicBookingSecurityRules.uploads.signedUrlLifetimeSeconds });
         return { statusCode: 200, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ key, uploadUrl }) };
       }
-      if (["details", "cancel", "reschedule"].includes(action)) {
+      if (["details", "cancel", "reschedule", "feedback"].includes(action)) {
         if (action === "details") {
-          await consumeAttemptLimit(dbService, sourceIp, "manage-details", 30, 300);
+          await consumeAttemptLimit(
+            dbService,
+            sourceIp,
+            "manage-details",
+            publicBookingSecurityRules.rateLimits.managementReadsPerWindow,
+            publicBookingSecurityRules.rateLimits.windowSeconds,
+          );
           return await managePublicBooking({ dbService, userId: bookingUserId, body: event.body ?? "" });
         }
-        await consumeAttemptLimit(dbService, sourceIp, "booking-write-attempts", 10, 300);
+        if (action === "feedback") {
+          await consumeAttemptLimit(
+            dbService,
+            sourceIp,
+            "feedback",
+            publicBookingSecurityRules.rateLimits.bookingWritesPerWindow,
+            publicBookingSecurityRules.rateLimits.windowSeconds,
+          );
+          return await managePublicBooking({ dbService, userId: bookingUserId, body: event.body ?? "" });
+        }
+        await consumeAttemptLimit(
+          dbService,
+          sourceIp,
+          "booking-write-attempts",
+          publicBookingSecurityRules.rateLimits.bookingWritesPerWindow,
+          publicBookingSecurityRules.rateLimits.windowSeconds,
+        );
         await assertNoSuccessCooldown(dbService, sourceIp);
         const response = await managePublicBooking({
           dbService,
@@ -76,7 +123,13 @@ export const makeHandler = ({
         await recordSuccessCooldown(dbService, sourceIp);
         return response;
       }
-      await consumeAttemptLimit(dbService, sourceIp, "booking-write-attempts", 10, 300);
+      await consumeAttemptLimit(
+        dbService,
+        sourceIp,
+        "booking-write-attempts",
+        publicBookingSecurityRules.rateLimits.bookingWritesPerWindow,
+        publicBookingSecurityRules.rateLimits.windowSeconds,
+      );
       await assertNoSuccessCooldown(dbService, sourceIp);
       const response = await createPublicBooking({
         dbService,
@@ -96,13 +149,13 @@ export const makeHandler = ({
 function parsePhotoUploadRequest(body: string) {
   let input: Record<string, any>;
   try { input = JSON.parse(body); } catch { throw new HttpError("Invalid photo upload request", 400); }
-  if (!/^[0-9a-f-]{36}$/i.test(input.requestId ?? "") || !["style", "hair"].includes(input.kind)) {
+  if (!/^[0-9a-f-]{36}$/i.test(input.requestId ?? "") || !publicBookingSecurityRules.uploads.allowedKinds.includes(input.kind)) {
     throw new HttpError("Invalid photo upload request", 400);
   }
-  if (!["image/jpeg", "image/png", "image/webp"].includes(input.contentType) || !Number.isInteger(input.size) || input.size < 1 || input.size > 2 * 1024 * 1024) {
+  if (!publicBookingSecurityRules.uploads.allowedContentTypes.includes(input.contentType) || !Number.isInteger(input.size) || input.size < 1 || input.size > publicBookingSecurityRules.uploads.maximumBytes) {
     throw new HttpError("Photos must be JPG, PNG, or WebP and no larger than 2 MB", 400);
   }
-  if (typeof input.fileName !== "string" || !input.fileName.trim() || input.fileName.length > 150) {
+  if (typeof input.fileName !== "string" || !input.fileName.trim() || input.fileName.length > publicBookingSecurityRules.uploads.maximumFileNameCharacters) {
     throw new HttpError("Invalid photo filename", 400);
   }
   return input as { requestId: string; kind: "style" | "hair"; contentType: "image/jpeg" | "image/png" | "image/webp"; size: number; fileName: string };
@@ -129,7 +182,7 @@ async function consumeAttemptLimit(dbService: DbService, sourceIp: string, scope
   const key = { PK: `PUBLIC_BOOKING_RATE#${rateLimitKey(sourceIp)}`, SK: `${scope.toUpperCase()}#WINDOW#${window}` };
   if (dbService.consumeRateLimit) {
     try {
-      await dbService.consumeRateLimit(key, limit, (window + 1) * windowSeconds + 60);
+      await dbService.consumeRateLimit(key, limit, (window + 1) * windowSeconds + publicBookingSecurityRules.rateLimits.recordExpiryBufferSeconds);
       return;
     } catch (error) {
       if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
@@ -138,7 +191,7 @@ async function consumeAttemptLimit(dbService: DbService, sourceIp: string, scope
       throw error;
     }
   }
-  await dbService.putItem({ ...key, expiresAt: (window + 1) * windowSeconds + 60 });
+  await dbService.putItem({ ...key, expiresAt: (window + 1) * windowSeconds + publicBookingSecurityRules.rateLimits.recordExpiryBufferSeconds });
 }
 
 async function assertNoSuccessCooldown(dbService: DbService, sourceIp: string) {
@@ -158,13 +211,13 @@ async function recordSuccessCooldown(dbService: DbService, sourceIp: string) {
   const now = Math.floor(Date.now() / 1000);
   const key = { PK: `PUBLIC_BOOKING_RATE#${ipHash}`, SK: "BOOKING_WRITE_SUCCESS" };
   if (dbService.consumeRateLimit) {
-    await dbService.consumeRateLimit(key, Number.MAX_SAFE_INTEGER, now + 60);
+    await dbService.consumeRateLimit(key, Number.MAX_SAFE_INTEGER, now + publicBookingSecurityRules.rateLimits.successfulWriteCooldownSeconds);
     return;
   }
   try {
     await dbService.putItem({
       ...key,
-      expiresAt: now + 60,
+      expiresAt: now + publicBookingSecurityRules.rateLimits.successfulWriteCooldownSeconds,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "ConditionalCheckFailedException") {

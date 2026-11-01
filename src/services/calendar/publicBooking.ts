@@ -23,6 +23,52 @@ const HairStyleCardSchema = z.object({
 
 export type PublicHairStyle = z.infer<typeof HairStyleCardSchema>;
 
+type ConfigurableBraidSize = "smedium" | "medium" | "large" | "jumbo";
+type ConfigurableBraidLength = "shoulder" | "bra" | "waist";
+
+export const latestStartTimeBySelection: Record<
+  ConfigurableBraidSize,
+  Record<ConfigurableBraidLength, string>
+> = {
+  smedium: { shoulder: "11:00", bra: "11:00", waist: "11:00" },
+  medium: { shoulder: "12:00", bra: "12:00", waist: "12:00" },
+  large: { shoulder: "18:00", bra: "18:00", waist: "18:00" },
+  jumbo: { shoulder: "18:00", bra: "18:00", waist: "18:00" },
+};
+
+export const publicBookingRules = {
+  timeZone: "Europe/Amsterdam",
+  availability: {
+    calendarMonthsShown: 3,
+    defaultAvailableWeekdays: [0, 6],
+    firstStartTime: "08:00",
+    lastStartTime: "18:00",
+    slotIntervalMinutes: 60,
+  },
+  changes: {
+    minimumNoticeHours: 24,
+  },
+  records: {
+    retentionDays: 730,
+  },
+  appointments: {
+    defaultDurationMinutes: 60,
+    legacyDurationFallbackMinutes: 120,
+  },
+  photos: {
+    maximumPerBooking: 2,
+  },
+  confirmationCodes: {
+    prefix: "PBD",
+    firstNumber: 45,
+  },
+  communications: {
+    addressNoticeHours: 48,
+    appointmentAddress: "Marstraat 50, 1363 VS, Almere Poort",
+    feedbackMaximumCharacters: 1000,
+  },
+} as const;
+
 export const publicHairStyles: PublicHairStyle[] = [
   { id: "knotless-styles", name: "Knotless / French Curl / Kinky / Marly", category: "Braids", style: "knotless", duration: 480, price: 40, priceLabel: "from €40", rowCounts: { smedium: 9, medium: 7, large: 6, jumbo: 4 }, durationBySelection: {
     jumbo: { shoulder: 120, bra: 180, waist: 210 }, large: { shoulder: 180, bra: 270, waist: 300 }, medium: { shoulder: 300, bra: 360, waist: 420 }, smedium: { shoulder: 360, bra: 420, waist: 480 },
@@ -84,13 +130,19 @@ const BookingRequestSchema = z.object({
     key: z.string().max(300),
     name: z.string().trim().min(1).max(150),
     contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-  })).max(2).optional().default([]),
+  })).max(publicBookingRules.photos.maximumPerBooking).optional().default([]),
   website: z.string().max(0).optional(),
 });
 
 const ManageBookingRequestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("details"), manageToken: z.string().uuid() }),
   z.object({ action: z.literal("cancel"), manageToken: z.string().uuid() }),
+  z.object({
+    action: z.literal("feedback"),
+    manageToken: z.string().uuid(),
+    rating: z.number().int().min(1).max(5),
+    comment: z.string().trim().max(publicBookingRules.communications.feedbackMaximumCharacters).optional().default(""),
+  }),
   z.object({
     action: z.literal("reschedule"),
     manageToken: z.string().uuid(),
@@ -111,6 +163,7 @@ type CalendarRecord = {
   manageToken?: string;
   confirmationCode?: string;
   updatedAt?: string;
+  completedAt?: string;
   PK?: string;
   SK?: string;
 };
@@ -141,7 +194,7 @@ export async function getPublicBookingAvailability({
     availability: buildAvailability(
       entries,
       today,
-      durationForSelection(selectedStyle, size, length) ?? selectedStyle?.duration ?? 60,
+      durationForSelection(selectedStyle, size, length) ?? selectedStyle?.duration ?? publicBookingRules.appointments.defaultDurationMinutes,
       { size, length },
     ),
   });
@@ -184,7 +237,7 @@ export async function createPublicBooking({
   const totalPrice = basePrice + (selectedExtra?.price ?? 0);
 
   const entries = await getCalendarRecords(dbService, userId);
-  const appointmentDuration = durationForSelection(selectedStyle, request.hairStyle.size, request.hairStyle.length) ?? selectedStyle.duration ?? 60;
+  const appointmentDuration = durationForSelection(selectedStyle, request.hairStyle.size, request.hairStyle.length) ?? selectedStyle.duration ?? publicBookingRules.appointments.defaultDurationMinutes;
   const availability = buildAvailability(entries, now, appointmentDuration, {
     size: request.hairStyle.size,
     length: request.hairStyle.length,
@@ -228,6 +281,7 @@ export async function createPublicBooking({
     totalPrice,
     photos: request.photos,
     durationMinutes: appointmentDuration,
+    addressIncludedInConfirmation: isWithinAddressNoticeWindow(request.date, request.time, now),
     expiresAt: bookingExpiry(request.date, request.time),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -274,6 +328,21 @@ export async function managePublicBooking({
   if (!selectedStyle) throw new HttpError("The booked hair style is no longer available", 409);
   const bookedSelection = booking.clients?.[0]?.hairStyle;
 
+  if (request.action === "feedback") {
+    if (!booking.completedAt) throw new HttpError("Feedback is available after the appointment is completed", 409);
+    await dbService.updateItem(
+      { PK: booking.PK, SK: booking.SK },
+      "SET feedback = :feedback, feedbackSubmittedAt = :feedbackSubmittedAt, updatedAt = :updatedAt",
+      {},
+      {
+        ":feedback": { rating: request.rating, comment: request.comment },
+        ":feedbackSubmittedAt": now.toISOString(),
+        ":updatedAt": now.toISOString(),
+      },
+    );
+    return successResponse({ feedbackSubmitted: true });
+  }
+
   if (request.action === "details") {
     const canModify = isOutsideChangeWindow(booking, now);
     return successResponse({
@@ -285,7 +354,7 @@ export async function managePublicBooking({
         time: booking.startTime,
         canModify,
       },
-      availability: buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60, bookedSelection),
+      availability: buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? publicBookingRules.appointments.defaultDurationMinutes, bookedSelection),
     });
   }
 
@@ -296,7 +365,7 @@ export async function managePublicBooking({
     return successResponse({ cancelled: true, confirmationCode: booking.confirmationCode });
   }
 
-  const availability = buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? 60, bookedSelection);
+  const availability = buildAvailability(entries, now, booking.durationMinutes ?? selectedStyle.duration ?? publicBookingRules.appointments.defaultDurationMinutes, bookedSelection);
   const availableDate = availability.find(({ date }) => date === request.date);
   if (!availableDate?.slots.includes(request.time)) {
     throw new HttpError("This appointment is no longer available", 409);
@@ -315,6 +384,8 @@ export async function managePublicBooking({
     createdAt: timestamp,
     updatedAt: timestamp,
     expiresAt: bookingExpiry(request.date, request.time),
+    addressIncludedInConfirmation: isWithinAddressNoticeWindow(request.date, request.time, now),
+    reminderSentAt: undefined,
   };
   await dbService.putItem(nextBooking);
   await dbService.updateItem(
@@ -333,12 +404,12 @@ export async function managePublicBooking({
 
 function isOutsideChangeWindow(booking: CalendarRecord, now: Date) {
   if (!booking.date || !booking.startTime) return false;
-  return amsterdamAppointmentInstant(booking.date, booking.startTime).getTime() - now.getTime() >= 24 * 60 * 60 * 1000;
+  return amsterdamAppointmentInstant(booking.date, booking.startTime).getTime() - now.getTime() >= publicBookingRules.changes.minimumNoticeHours * 60 * 60 * 1000;
 }
 
 function assertOutsideChangeWindow(booking: CalendarRecord, now: Date) {
   if (!isOutsideChangeWindow(booking, now)) {
-    throw new HttpError("Appointments can only be cancelled or rescheduled at least 24 hours before the start time", 409);
+    throw new HttpError(`Appointments can only be cancelled or rescheduled at least ${publicBookingRules.changes.minimumNoticeHours} hours before the start time`, 409);
   }
 }
 
@@ -347,17 +418,23 @@ function amsterdamAppointmentInstant(date: string, time: string) {
   const [hour, minute] = time.split(":").map(Number);
   const wallClockAsUtc = Date.UTC(year, month - 1, day, hour, minute);
   const offsetName = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Europe/Amsterdam",
+    timeZone: publicBookingRules.timeZone,
     timeZoneName: "longOffset",
   }).formatToParts(new Date(wallClockAsUtc)).find(({ type }) => type === "timeZoneName")?.value;
   const match = offsetName?.match(/GMT([+-])(\d{2}):(\d{2})/);
-  if (!match) throw new Error("Could not determine Europe/Amsterdam offset");
+  if (!match) throw new Error(`Could not determine ${publicBookingRules.timeZone} offset`);
   const offsetMinutes = (Number(match[2]) * 60 + Number(match[3])) * (match[1] === "+" ? 1 : -1);
   return new Date(wallClockAsUtc - offsetMinutes * 60 * 1000);
 }
 
 function bookingExpiry(date: string, time: string) {
-  return Math.floor(amsterdamAppointmentInstant(date, time).getTime() / 1000) + 730 * 24 * 60 * 60;
+  return Math.floor(amsterdamAppointmentInstant(date, time).getTime() / 1000) + publicBookingRules.records.retentionDays * 24 * 60 * 60;
+}
+
+function isWithinAddressNoticeWindow(date: string, time: string, now: Date) {
+  const appointmentTime = amsterdamAppointmentInstant(date, time).getTime();
+  const noticeWindow = publicBookingRules.communications.addressNoticeHours * 60 * 60 * 1000;
+  return appointmentTime > now.getTime() && appointmentTime - now.getTime() <= noticeWindow;
 }
 
 async function getCalendarRecords(dbService: DbService, userId: string) {
@@ -370,16 +447,19 @@ async function getCalendarRecords(dbService: DbService, userId: string) {
 function buildAvailability(
   entries: CalendarRecord[],
   today = new Date(),
-  requestedDuration = 60,
+  requestedDuration: number = publicBookingRules.appointments.defaultDurationMinutes,
   selection: { size?: string; length?: string } = {},
 ) {
   const from = toAmsterdamDateKey(today);
-  const to = toDateKey(addMonths(new Date(`${from}T12:00:00.000Z`), 2));
+  const to = toDateKey(addMonths(
+    new Date(`${from}T12:00:00.000Z`),
+    publicBookingRules.availability.calendarMonthsShown - 1,
+  ));
   const dates = new Map<string, CalendarRecord[]>();
   const cursor = new Date(`${from}T12:00:00.000Z`);
   const finalDate = new Date(`${to}T12:00:00.000Z`);
   while (cursor <= finalDate) {
-    if (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6) {
+    if (publicBookingRules.availability.defaultAvailableWeekdays.includes(cursor.getUTCDay() as 0 | 6)) {
       dates.set(toDateKey(cursor), []);
     }
     cursor.setUTCDate(cursor.getUTCDate() + 1);
@@ -400,13 +480,13 @@ function buildAvailability(
       const bookedIntervals = records.flatMap((record) => {
         if (record.status === "cancelled" || record.status === "rescheduled") return [];
         const entryStart = record.status === "booked" ? record.startTime : undefined;
-        const entryDuration = record.durationMinutes ?? durationForStyle(record.hairStyleName) ?? durationForStyle(record.clients?.[0]?.hairStyle?.style) ?? 120;
+        const entryDuration = record.durationMinutes ?? durationForStyle(record.hairStyleName) ?? durationForStyle(record.clients?.[0]?.hairStyle?.style) ?? publicBookingRules.appointments.legacyDurationFallbackMinutes;
         const entryInterval = entryStart
           ? [{ start: timeToMinutes(entryStart), end: record.endTime ? timeToMinutes(record.endTime) : timeToMinutes(entryStart) + entryDuration }]
           : [];
         const clientIntervals = (record.clients ?? []).flatMap((client) => {
           if (!client.startTime) return [];
-          const duration = durationForStyle(client.hairStyle?.style) ?? record.durationMinutes ?? 120;
+          const duration = durationForStyle(client.hairStyle?.style) ?? record.durationMinutes ?? publicBookingRules.appointments.legacyDurationFallbackMinutes;
           const start = timeToMinutes(client.startTime);
           return [{ start, end: start + duration }];
         });
@@ -415,14 +495,14 @@ function buildAvailability(
       const windows = availableRecords.filter((record) => record.startTime || record.endTime);
       const slots = defaultSlots(date).filter((slot) => {
         const start = timeToMinutes(slot);
-        if (selection.length === "waist" && selection.size === "smedium" && start >= timeToMinutes("12:00")) return false;
-        if (selection.length === "waist" && selection.size === "medium" && start >= timeToMinutes("18:00")) return false;
+        const latestStart = latestStartTimeForSelection(selection);
+        if (latestStart && start > timeToMinutes(latestStart)) return false;
         const end = start + requestedDuration;
         if (bookedIntervals.some((booked) => start < booked.end && end > booked.start)) return false;
-        if (!windows.length) return start <= timeToMinutes("18:00");
+        if (!windows.length) return start <= timeToMinutes(publicBookingRules.availability.lastStartTime);
         return windows.some((window) => {
-          const windowStart = timeToMinutes(window.startTime || "08:00");
-          const windowEnd = timeToMinutes(window.endTime || "18:00");
+          const windowStart = timeToMinutes(window.startTime || publicBookingRules.availability.firstStartTime);
+          const windowEnd = timeToMinutes(window.endTime || publicBookingRules.availability.lastStartTime);
           return start >= windowStart && start <= windowEnd;
         });
       });
@@ -432,6 +512,13 @@ function buildAvailability(
     .sort((left, right) => left.date.localeCompare(right.date));
 }
 
+function latestStartTimeForSelection(selection: { size?: string; length?: string }) {
+  const size = selection.size as ConfigurableBraidSize | undefined;
+  const length = selection.length as ConfigurableBraidLength | undefined;
+  if (!size || !length) return undefined;
+  return latestStartTimeBySelection[size]?.[length];
+}
+
 function latestAvailabilityRecord(records: CalendarRecord[]) {
   return records
     .filter(({ status }) => status === "available" || status === "unavailable")
@@ -439,7 +526,13 @@ function latestAvailabilityRecord(records: CalendarRecord[]) {
 }
 
 function defaultSlots(_date: string) {
-  return ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+  const first = timeToMinutes(publicBookingRules.availability.firstStartTime);
+  const last = timeToMinutes(publicBookingRules.availability.lastStartTime);
+  const slots: string[] = [];
+  for (let minutes = first; minutes <= last; minutes += publicBookingRules.availability.slotIntervalMinutes) {
+    slots.push(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+  }
+  return slots;
 }
 
 function durationForStyle(style?: string) {
@@ -455,12 +548,12 @@ function durationForSelection(style?: PublicHairStyle, size?: string, length?: s
 
 async function nextConfirmationCode(dbService: DbService, userId: string, appointmentDate: string) {
   const year = appointmentDate.slice(0, 4);
-  if (!dbService.incrementCounter) return `PBD-${year}C45`;
+  if (!dbService.incrementCounter) return `${publicBookingRules.confirmationCodes.prefix}-${year}C${publicBookingRules.confirmationCodes.firstNumber}`;
   const count = await dbService.incrementCounter(
     { PK: createPk(userId), SK: `BOOKING_COUNTER#${year}` },
-    44,
+    publicBookingRules.confirmationCodes.firstNumber - 1,
   );
-  return `PBD-${year}C${count}`;
+  return `${publicBookingRules.confirmationCodes.prefix}-${year}C${count}`;
 }
 
 function timeToMinutes(value: string) {
@@ -470,7 +563,7 @@ function timeToMinutes(value: string) {
 
 function isWeekend(date: string) {
   const day = new Date(`${date}T12:00:00.000Z`).getUTCDay();
-  return day === 0 || day === 6;
+  return publicBookingRules.availability.defaultAvailableWeekdays.includes(day as 0 | 6);
 }
 
 function parseBookingRequest(body: string) {
@@ -492,7 +585,7 @@ function toDateKey(date: Date) {
 
 function toAmsterdamDateKey(date: Date) {
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Amsterdam",
+    timeZone: publicBookingRules.timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

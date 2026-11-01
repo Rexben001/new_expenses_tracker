@@ -142,6 +142,7 @@ describe("public calendar booking", () => {
         date: "2026-10-25",
         status: "booked",
         startTime: "08:00",
+        addressIncludedInConfirmation: true,
         clients: [expect.objectContaining({
           name: "Ada Client",
           startTime: "08:00",
@@ -351,28 +352,31 @@ describe("public calendar booking", () => {
       .toEqual(["15:00", "16:00", "17:00", "18:00"]);
   });
 
-  test("limits waist-length Smedium to mornings and excludes 18:00 for waist-length Medium", async () => {
+  test.each([
+    { size: "smedium", length: "shoulder", latestStart: "11:00" },
+    { size: "smedium", length: "bra", latestStart: "11:00" },
+    { size: "smedium", length: "waist", latestStart: "11:00" },
+    { size: "medium", length: "shoulder", latestStart: "12:00" },
+    { size: "medium", length: "bra", latestStart: "12:00" },
+    { size: "medium", length: "waist", latestStart: "12:00" },
+    { size: "large", length: "shoulder", latestStart: "18:00" },
+    { size: "large", length: "bra", latestStart: "18:00" },
+    { size: "large", length: "waist", latestStart: "18:00" },
+    { size: "jumbo", length: "shoulder", latestStart: "18:00" },
+    { size: "jumbo", length: "bra", latestStart: "18:00" },
+    { size: "jumbo", length: "waist", latestStart: "18:00" },
+  ])("applies the $size/$length latest-start rule", async ({ size, length, latestStart }) => {
     const { dbService } = makeDb([available("2026-10-31")]);
-    const smedium = body(await getPublicBookingAvailability({
+    const result = body(await getPublicBookingAvailability({
       dbService,
       userId,
       hairStyleId: "knotless-styles",
-      size: "smedium",
-      length: "waist",
-      today: new Date("2026-10-30T12:00:00.000Z"),
-    })).availability.find((item: any) => item.date === "2026-10-31");
-    const medium = body(await getPublicBookingAvailability({
-      dbService,
-      userId,
-      hairStyleId: "knotless-styles",
-      size: "medium",
-      length: "waist",
+      size,
+      length,
       today: new Date("2026-10-30T12:00:00.000Z"),
     })).availability.find((item: any) => item.date === "2026-10-31");
 
-    expect(smedium.slots).toEqual(["08:00", "09:00", "10:00", "11:00"]);
-    expect(medium.slots).toContain("17:00");
-    expect(medium.slots).not.toContain("18:00");
+    expect(result.slots[result.slots.length - 1]).toBe(latestStart);
   });
 
   test("blocks 09:00 after a legacy 08:00 appointment with missing duration", async () => {
@@ -449,5 +453,37 @@ describe("public calendar booking", () => {
       body: JSON.stringify({ action: "cancel", manageToken }),
     })).rejects.toMatchObject({ status: 409 });
     expect(items.get(`${booking.PK}|${booking.SK}`)).toBeDefined();
+  });
+
+  test("accepts feedback only after hair completion", async () => {
+    const manageToken = "66666666-6666-4666-8666-666666666666";
+    const booking = {
+      PK: `USER#${userId}`,
+      SK: "CALENDAR#completed-booking",
+      id: "completed-booking",
+      date: "2026-10-25",
+      status: "booked",
+      startTime: "10:00",
+      hairStyleName: "Crochet",
+      confirmationCode: "PBD-2026C46",
+      manageToken,
+      completedAt: "2026-10-25T12:00:00.000Z",
+      clients: [{ email: "ada@example.com", startTime: "10:00", hairStyle: { style: "crochet" } }],
+    };
+    const { dbService } = makeDb([booking]);
+    const response = body(await managePublicBooking({
+      dbService,
+      userId,
+      now: new Date("2026-10-25T13:00:00.000Z"),
+      body: JSON.stringify({ action: "feedback", manageToken, rating: 5, comment: "Loved it" }),
+    }));
+
+    expect(response.feedbackSubmitted).toBe(true);
+    expect(dbService.updateItem).toHaveBeenCalledWith(
+      { PK: booking.PK, SK: booking.SK },
+      expect.stringContaining("feedback"),
+      {},
+      expect.objectContaining({ ":feedback": { rating: 5, comment: "Loved it" } }),
+    );
   });
 });

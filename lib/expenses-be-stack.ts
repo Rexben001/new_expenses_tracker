@@ -7,6 +7,8 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as kms from "aws-cdk-lib/aws-kms";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as ses from "aws-cdk-lib/aws-ses";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { StartingPosition } from "aws-cdk-lib/aws-lambda";
 
@@ -272,6 +274,25 @@ export class ExpensesBeStack extends cdk.Stack {
     }));
     bookingImageBucket.grantPut(handlePublicBookingLambda);
     bookingImageBucket.grantRead(sendBookingConfirmationLambda);
+
+    const sendBookingReminderLambda = new NodejsFunction(this, "SendBookingReminderFn", {
+      runtime: lambdaRuntime,
+      entry: path.join(__dirname, "../src/handlers/sendBookingConfirmation/index.ts"),
+      handler: "reminderHandler",
+      timeout: cdk.Duration.minutes(1),
+      environment: {
+        ...lambdaEnvironment,
+        TABLE_NAME: calendarTable.tableName,
+        BOOKING_EMAIL_FROM: BOOKING_OWNER_EMAIL,
+        PUBLIC_SITE_URL: "https://prettybydollzzz.netlify.app/",
+        BREVO_API_KEY: process.env.BREVO_API_KEY!,
+      },
+    });
+    calendarTable.grantReadWriteData(sendBookingReminderLambda);
+    new events.Rule(this, "BookingReminderSchedule", {
+      schedule: events.Schedule.rate(cdk.Duration.hours(1)),
+      targets: [new targets.LambdaFunction(sendBookingReminderLambda)],
+    });
 
     const handleHowToLambda = new NodejsFunction(this, "HandleHowToFn", {
       runtime: lambdaRuntime,

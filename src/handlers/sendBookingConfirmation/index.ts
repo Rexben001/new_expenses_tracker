@@ -1,8 +1,11 @@
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import type { DynamoDBStreamHandler } from "aws-lambda";
+import type { DynamoDBStreamHandler, ScheduledHandler } from "aws-lambda";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DynamoDBClient, ScanCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { publicBookingRules } from "../../services/calendar/publicBooking";
 
 const s3Client = new S3Client({});
+const dynamoClient = new DynamoDBClient({});
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -26,6 +29,11 @@ function bookingManageUrls(entry: Record<string, any>) {
   };
 }
 
+function feedbackUrl(entry: Record<string, any>) {
+  const base = process.env.PUBLIC_SITE_URL ?? "https://prettybydollzzz.netlify.app/";
+  return `${base}#feedback=${encodeURIComponent(entry.manageToken)}`;
+}
+
 function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any>, style: Record<string, any>) {
   const isRescheduled = Boolean(entry.rescheduledFrom);
   const heading = isRescheduled ? "Appointment rescheduled." : "You’re booked.";
@@ -37,6 +45,9 @@ function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any
     ? `${client.extraName}${client.extraPrice ? ` (+€${client.extraPrice})` : ""}`
     : "";
   const { cancelUrl, rescheduleUrl } = bookingManageUrls(entry);
+  const addressMessage = entry.addressIncludedInConfirmation
+    ? `<div style="margin-top:18px;padding:16px 18px;background:#fde8f4;border-left:4px solid #b32677;"><strong>Appointment address</strong><br>${escapeHtml(publicBookingRules.communications.appointmentAddress)}</div>`
+    : `<p style="margin:16px 0 0;color:#5c285d;font-size:13px;line-height:1.7;">We’ll email your appointment address ${publicBookingRules.communications.addressNoticeHours} hours before your appointment.</p>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${heading}</title></head>
 <body style="margin:0;padding:0;background:#fff3fa;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3a143c;">
@@ -51,6 +62,7 @@ function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any
         <div style="width:56px;height:56px;margin:0 auto 22px;border-radius:50%;background:#b32677;color:white;font-size:28px;line-height:56px;">✓</div>
         <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:40px;font-weight:400;line-height:1.1;color:#3a143c;">${heading}</h1>
         <p style="margin:14px 0 0;color:#5c285d;font-size:15px;line-height:1.6;">Hi ${escapeHtml(client.name)}, ${intro}</p>
+        ${addressMessage}
       </td></tr>
       <tr><td style="padding:10px 34px 30px;">
         <div style="padding:16px 18px;background:#fde8f4;border-left:4px solid #b32677;text-align:center;">
@@ -81,6 +93,15 @@ function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any
     </table>
   </td></tr></table>
 </body></html>`;
+}
+
+function reminderEmailHtml(entry: Record<string, any>, client: Record<string, any>) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Appointment reminder</title></head><body style="margin:0;background:#fff3fa;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3a143c;"><table role="presentation" width="100%"><tr><td align="center" style="padding:32px 14px;"><table role="presentation" width="100%" style="max-width:620px;background:#fffafd;border:1px solid rgba(58,20,60,.18);"><tr><td style="padding:30px;background:#3a143c;color:#fff3fa;text-align:center;font-family:Georgia,serif;font-size:25px;">PrettybyDollzzz</td></tr><tr><td style="padding:40px 34px;text-align:center;"><h1 style="margin:0;font-family:Georgia,serif;font-size:36px;font-weight:400;">Your appointment is coming up.</h1><p style="color:#5c285d;line-height:1.7;">Hi ${escapeHtml(client.name)}, this is your reminder for ${escapeHtml(entry.date)} at ${escapeHtml(entry.startTime)}.</p><div style="margin-top:24px;padding:20px;background:#fde8f4;border-left:4px solid #b32677;"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7b1d67;">Appointment address</div><div style="margin-top:8px;font-family:Georgia,serif;font-size:22px;">${escapeHtml(publicBookingRules.communications.appointmentAddress)}</div></div></td></tr></table></td></tr></table></body></html>`;
+}
+
+function reviewEmailHtml(entry: Record<string, any>, client: Record<string, any>) {
+  const url = feedbackUrl(entry);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Share your feedback</title></head><body style="margin:0;background:#fff3fa;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3a143c;"><table role="presentation" width="100%"><tr><td align="center" style="padding:32px 14px;"><table role="presentation" width="100%" style="max-width:620px;background:#fffafd;border:1px solid rgba(58,20,60,.18);"><tr><td style="padding:30px;background:#3a143c;color:#fff3fa;text-align:center;font-family:Georgia,serif;font-size:25px;">PrettybyDollzzz</td></tr><tr><td style="padding:42px 34px;text-align:center;"><h1 style="margin:0;font-family:Georgia,serif;font-size:36px;font-weight:400;">How did we do?</h1><p style="margin:16px 0 26px;color:#5c285d;line-height:1.7;">Hi ${escapeHtml(client.name)}, thank you for choosing PrettybyDollzzz. Your feedback helps us improve.</p><a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 22px;background:#b32677;color:white;text-decoration:none;font-weight:700;">Leave a review</a></td></tr></table></td></tr></table></body></html>`;
 }
 
 function cancellationEmailHtml(entry: Record<string, any>, client: Record<string, any>) {
@@ -155,6 +176,15 @@ export const handler: DynamoDBStreamHandler = async (event) => {
           textContent: `Hi ${client.name},\n\nYour appointment on ${entry.date} at ${entry.startTime} has been cancelled.\nReference: ${entry.confirmationCode}`,
         });
       }
+      if (entry.completedAt && !previous?.completedAt) {
+        const url = feedbackUrl(entry);
+        await sendEmail({
+          to: [{ email: client.email }],
+          subject: `How was your PrettybyDollzzz appointment? ${entry.confirmationCode}`,
+          htmlContent: reviewEmailHtml(entry, client),
+          textContent: `Hi ${client.name},\n\nThank you for choosing PrettybyDollzzz. Share your feedback: ${url}`,
+        });
+      }
       continue;
     }
     if (record.eventName !== "INSERT") continue;
@@ -196,8 +226,51 @@ ${details}
 
 Hair is not included.
 
+${entry.addressIncludedInConfirmation
+  ? `Appointment address: ${publicBookingRules.communications.appointmentAddress}`
+  : `We’ll send your appointment address ${publicBookingRules.communications.addressNoticeHours} hours before your appointment.`}
+
 Reschedule: ${rescheduleUrl}
 Cancel: ${cancelUrl}`,
     });
+  }
+};
+
+function appointmentInstant(entry: Record<string, any>) {
+  if (!entry.date || !entry.startTime) return undefined;
+  const [year, month, day] = String(entry.date).split("-").map(Number);
+  const [hour, minute] = String(entry.startTime).split(":").map(Number);
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute);
+  const offset = new Intl.DateTimeFormat("en-US", { timeZone: publicBookingRules.timeZone, timeZoneName: "longOffset" })
+    .formatToParts(new Date(utcGuess)).find(({ type }) => type === "timeZoneName")?.value?.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!offset) return undefined;
+  const minutes = (Number(offset[2]) * 60 + Number(offset[3])) * (offset[1] === "+" ? 1 : -1);
+  return new Date(utcGuess - minutes * 60 * 1000);
+}
+
+export const reminderHandler: ScheduledHandler = async () => {
+  const response = await dynamoClient.send(new ScanCommand({ TableName: process.env.TABLE_NAME! }));
+  const now = new Date();
+  const noticeMs = publicBookingRules.communications.addressNoticeHours * 60 * 60 * 1000;
+  for (const raw of response.Items ?? []) {
+    const entry = unmarshall(raw);
+    if (entry.source !== "prettybydollzzz-web" || entry.status !== "booked" || entry.reminderSentAt || entry.addressIncludedInConfirmation) continue;
+    const appointment = appointmentInstant(entry);
+    if (!appointment || appointment.getTime() <= now.getTime() || appointment.getTime() - now.getTime() > noticeMs) continue;
+    const client = entry.clients?.[0];
+    if (!client?.email) continue;
+    await sendEmail({
+      to: [{ email: client.email }],
+      subject: `PrettybyDollzzz appointment reminder ${entry.confirmationCode}`,
+      htmlContent: reminderEmailHtml(entry, client),
+      textContent: `Hi ${client.name},\n\nReminder: your appointment is ${entry.date} at ${entry.startTime}.\nAddress: ${publicBookingRules.communications.appointmentAddress}`,
+    });
+    await dynamoClient.send(new UpdateItemCommand({
+      TableName: process.env.TABLE_NAME!,
+      Key: { PK: raw.PK, SK: raw.SK },
+      UpdateExpression: "SET reminderSentAt = :sentAt",
+      ConditionExpression: "attribute_not_exists(reminderSentAt)",
+      ExpressionAttributeValues: { ":sentAt": { S: now.toISOString() } },
+    }));
   }
 };
