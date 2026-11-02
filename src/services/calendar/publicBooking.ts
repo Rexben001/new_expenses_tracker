@@ -339,8 +339,12 @@ export async function managePublicBooking({
     if (!booking.completedAt) throw new HttpError("Feedback is available after the appointment is completed", 409);
     await dbService.updateItem(
       { PK: booking.PK, SK: booking.SK },
-      "SET feedback = :feedback, feedbackSubmittedAt = :feedbackSubmittedAt, updatedAt = :updatedAt",
-      {},
+      "SET #feedback = :feedback, #feedbackSubmittedAt = :feedbackSubmittedAt, #updatedAt = :updatedAt",
+      {
+        "#feedback": "feedback",
+        "#feedbackSubmittedAt": "feedbackSubmittedAt",
+        "#updatedAt": "updatedAt",
+      },
       {
         ":feedback": { rating: request.rating, comment: request.comment },
         ":feedbackSubmittedAt": now.toISOString(),

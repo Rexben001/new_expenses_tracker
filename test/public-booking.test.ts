@@ -503,7 +503,7 @@ describe("public calendar booking", () => {
     expect(dbService.updateItem).toHaveBeenCalledWith(
       { PK: booking.PK, SK: booking.SK },
       expect.stringContaining("feedback"),
-      {},
+      expect.objectContaining({ "#feedback": "feedback" }),
       expect.objectContaining({ ":feedback": { rating: 5, comment: "Loved it" } }),
     );
   });
