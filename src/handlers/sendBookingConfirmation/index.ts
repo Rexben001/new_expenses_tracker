@@ -79,6 +79,8 @@ function bookingEmailHtml(entry: Record<string, any>, client: Record<string, any
           ${detailRow("Date", entry.date)}
           ${detailRow("Time", entry.startTime)}
           ${detailRow("Total", total)}
+          ${detailRow("Style details", style.additionalDetails)}
+          ${detailRow("Client notes", client.notes)}
         </table>
       </td></tr>
       <tr><td style="padding:28px 34px;background:#fff3fa;">
